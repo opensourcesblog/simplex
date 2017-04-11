@@ -12,8 +12,8 @@ for i in range(1,5):
 m.maximize(3*x[1]+x[2]+4*x[3])
 
 m.add_constraint(x[0]+x[1]+x[2]+x[3] <= 40)
-m.add_constraint(2*x[0]+x[1]+(-1*x[2])+(-1*x[3]) <= 10)
-m.add_constraint(x[3]+(-1*x[1]) <= 10)
+m.add_constraint(2*x[0]+x[1]-x[2]-x[3] <= 10)
+m.add_constraint(x[3]-x[1] <= 10)
 
 
 t0 = time()

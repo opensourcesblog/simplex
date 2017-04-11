@@ -27,17 +27,34 @@ class RealNN:
         else:
             return List_RealNN(self,other)
 
+    def __radd__(self, other):
+        if other == 0:
+            return self
+        else:
+            return self.__add__(other)
+
+    def __neg__(self):
+        return RealNN(name=self.name,value=self.value,index=self.index,factor=-self.factor)
+
+    def __sub__(self, other):
+        if self.value is not None and other.value is not None:
+            return RealNN(value=self.factor*self.value-other.factor*other.value)
+        else:
+            return List_RealNN(self,-other)
+
+    def __rsub__(self, other):
+        if other == 0:
+            return self
+        else:
+            return self.__sub__(other)
+
     def __rmul__(self, factor):
         if isinstance(factor, (int, float, complex)):
             return RealNN(self.name,self.value,index=self.index,factor=factor)
         else:
             raise NonLinear("factor %s is not linear" % factor)
 
-    def __radd__(self, other):
-        if other == 0:
-            return self
-        else:
-            return self.__add__(other)
+
 
     def get_coefficients(self,l=False):
         if not l:

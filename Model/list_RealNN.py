@@ -33,3 +33,13 @@ class List_RealNN:
             return self
         else:
             return self.__add__(other)
+
+    def __sub__(self, other):
+        return List_RealNN(self,-other)
+
+    def __rsub__(self, other):
+        if other == 0:
+            return self
+        else:
+            return self.__add__(-other)
+
