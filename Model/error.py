@@ -9,3 +9,7 @@ class InfeasibleError(Error):
 class NonLinear(Error):
     def __init__(self, message):
         self.message = message
+
+class Unsolveable(Error):
+    def __init__(self, message):
+        self.message = message

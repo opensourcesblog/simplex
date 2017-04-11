@@ -38,3 +38,10 @@ class RealNN:
             return self
         else:
             return self.__add__(other)
+
+    def get_coefficients(self,l=False):
+        if not l:
+            l = 1
+        l_factor = [0]*l
+        l_factor[self.index] = self.factor
+        return l_factor

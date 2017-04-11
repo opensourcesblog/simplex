@@ -11,7 +11,9 @@ class List_RealNN:
             self.list = realNN_x.list
             self.list.append(realNN_y)
 
-    def get_coefficients(self,l):
+    def get_coefficients(self,l=False):
+        if not l:
+            l = len(self.list)
         l_factor = [0]*l
         for realNN in self.list:
             l_factor[realNN.index] = realNN.factor
