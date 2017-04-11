@@ -2,9 +2,7 @@ from Model.model import Model
 import numpy as np
 from time import time
 
-m = Model(print_obj={
-   'start_conf': True
-})
+m = Model()
 
 """
 A Manufacturing Example
@@ -23,6 +21,7 @@ Material p.u. | 45$       | 40$       | 20$
 Profit p.u.   | 45$       | 60$       | 50$
 Maximum sales | 100       | 40        | 60
 
+Maximize profit
 """
 
 
@@ -46,7 +45,5 @@ m.add_constraint(r <= 60)
 t0 = time()
 m.solve()
 print("Solved in %f" % (time()-t0))
-
-
 
 m.print_solution()

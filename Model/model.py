@@ -8,6 +8,9 @@ class Model:
         self.constraints = []
         self.variables = []
 
+        self.MINIMIZE = -1
+        self.MAXIMIZE = 1
+
         if not print_obj:
             self.p = {}
         else:
@@ -26,35 +29,36 @@ class Model:
 
     def maximize(self, obj):
         self.obj_coefficients = obj.get_coefficients(len(self.variables))
-        self.obj_type = "maximize"
+        self.obj_type = self.MAXIMIZE
 
     def minimize(self, obj):
         self.obj_coefficients = obj.get_coefficients(len(self.variables))
-        self.obj_type = "minimize"
+        self.obj_type = self.MINIMIZE
 
     def add_constraint(self,constraint):
         self.constraints.append(constraint)
+
+    def redef_matrix_bs_obj(self):
+        self.matrix = self.tableau[:-1]
+        self.bs = self.tableau[:-1,-1]
+        self.obj = self.tableau[-1,:]
 
     def find_bfs(self):
         bfs_idx = []
         bfs_vars = []
 
-        self.matrix = self.tableau[:-1]
-        self.bs = self.tableau[:-1,-1]
-        self.obj = self.tableau[-1,:]
+        self.redef_matrix_bs_obj()
 
         # set obj
-        if self.obj_type == "minimize":
+        if self.obj_type == self.MINIMIZE:
             self.tableau[-1,:] = np.append(np.array(self.obj_coefficients), np.zeros((1,1)))
-        elif self.obj_type == "maximize":
+        elif self.obj_type == self.MAXIMIZE:
             self.tableau[-1,:] = np.append(-np.array(self.obj_coefficients), np.zeros((1,1)))
 
-        if self.obj_type == "minimize":
+        if self.obj_type == self.MINIMIZE:
             self.tableau = np.transpose(self.tableau)
             self.tableau[-1,:] = -self.tableau[-1,:]
-            self.matrix = self.tableau[:-1]
-            self.bs = self.tableau[:-1,-1]
-            self.obj = self.tableau[-1,:]
+            self.redef_matrix_bs_obj()
 
         self.row_to_var = [False for x in range(self.matrix.shape[0])]
 
@@ -64,11 +68,7 @@ class Model:
         identity = np.r_[identity, np.zeros((1,self.matrix.shape[0]))]
         self.tableau = np.c_[self.tableau[:,:-1], identity, self.tableau[:,-1]]
 
-
-        self.matrix = self.tableau[:-1]
-        self.bs = self.tableau[:-1,-1]
-        self.obj = self.tableau[-1,:]
-
+        self.redef_matrix_bs_obj()
 
         # range not including the b column
         # get all columns which have only one value => basis
@@ -77,17 +77,6 @@ class Model:
             bfs_idx.append([row,c])
             bfs_vars.append(c)
             self.row_to_var[row] = c
-
-        # build up the objective function
-        # first devide by value in matrix to get the identity matrix
-        # then get the objective function in terms of the non basian variables
-        i = 0
-        for row in range(self.matrix.shape[0]):
-            col = self.row_to_var[row]
-            val_in_matrix = self.matrix[row,col]
-            # get an identity matrix
-            self.matrix[row] /= val_in_matrix
-            i += 1
 
         if self.p['start_conf']:
             print("Start Tableau:")
@@ -102,6 +91,9 @@ class Model:
 
     def pivot(self):
         breaked = False
+
+        # check if the current tableau is optimal
+        # if optimal every value in obj is non negative
         for c in range(self.matrix.shape[1]-1):
             if c in self.row_to_var:
                 continue
@@ -123,11 +115,11 @@ class Model:
             print(self.matrix[leaving_row])
             print("Entering is %d" % entering)
 
-
+        # get the new objective function
         fac = -self.tableau[-1,entering]/self.matrix[leaving_row,entering]
         self.tableau[-1] = fac*self.matrix[leaving_row]+self.tableau[-1]
 
-
+        # gausian elemination
         for row in range(self.matrix.shape[0]):
             if row != leaving_row:
                 fac = -self.matrix[row,entering]/self.matrix[leaving_row,entering]
@@ -135,7 +127,10 @@ class Model:
 
         self.matrix[leaving_row] /= self.matrix[leaving_row,entering]
 
+        # change basis variables
         self.new_basis(entering, leaving)
+
+        # get an identity matrix again
         i = 0
         for row in range(self.matrix.shape[0]):
             c = self.row_to_var[row]
@@ -145,7 +140,7 @@ class Model:
         return False
 
     def print_solution(self):
-        if self.obj_type == "maximize":
+        if self.obj_type == self.MAXIMIZE:
             for c in range(len(self.variables)):
                 if np.count_nonzero(self.matrix[:,c]) == 1:
                     v_idx = np.where(self.matrix[:,c] == 1)[0]
@@ -157,14 +152,14 @@ class Model:
                     print("slack %s is %f" % (cc,self.bs[v_idx]))
                 cc += 1
             print("Obj: %f" % (self.obj[-1]))
-        elif self.obj_type == "minimize":
-            v_idx = self.matrix.shape[0]+1
+        elif self.obj_type == self.MINIMIZE:
+            v_idx = self.matrix.shape[1]-len(self.variables)-1
             for c in range(len(self.variables)):
                 if self.obj[v_idx] != 0:
                     print("%s is %f" % (self.variables[c].name,self.obj[v_idx]))
                 v_idx+=1
             cc = 1
-            for c in range(self.matrix.shape[0]+1):
+            for c in range(self.matrix.shape[1]-len(self.variables)-1):
                 if self.obj[c] != 0:
                     print("slack %s is %f" % (cc,self.obj[c]))
                 cc += 1
@@ -173,7 +168,7 @@ class Model:
     def get_solution_object(self):
         sol_row = []
 
-        if self.obj_type == "maximize":
+        if self.obj_type == self.MAXIMIZE:
             for c in range(self.matrix.shape[1]-1):
                 if np.count_nonzero(self.matrix[:,c]) == 1:
                     v_idx = np.where(self.matrix[:,c] == 1)[0][0]
@@ -181,7 +176,7 @@ class Model:
                 else:
                     sol_row.append(0)
             sol_row.append(self.obj[-1])
-        elif self.obj_type == "minimize":
+        elif self.obj_type == self.MINIMIZE:
             sol_row = np.append(self.obj[self.matrix.shape[0]+1:-1],self.obj[:self.matrix.shape[0]+1])
             sol_row = np.append(sol_row, self.obj[-1])
         return sol_row
@@ -200,10 +195,10 @@ class Model:
             self.tableau[i] = coefficients+[constraint.y]
             i += 1
 
-            if self.obj_type == "maximize":
+            if self.obj_type == self.MAXIMIZE:
                 if constraint.type != "<=":
                     raise Unsolveable("Type %s isn't accepted" % constraint.type)
-            if self.obj_type == "minimize":
+            if self.obj_type == self.MINIMIZE:
                 if constraint.type != ">=":
                     raise Unsolveable("Type %s isn't accepted" % constraint.type)
 
