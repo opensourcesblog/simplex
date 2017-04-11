@@ -73,5 +73,25 @@ class MyTest(unittest.TestCase):
         for x_idx in range(len(real_sol)):
             self.assertAlmostEqual(computed_solution[x_idx],real_sol[x_idx])
 
+    def test_minimize_2v_3c_2o(self):
+        m = Model()
+
+        x = []
+        for i in range(1,3):
+            x.append(m.add_var("real+", name="x_%d" % i))
+
+        m.minimize(0.12*x[0]+0.15*x[1])
+
+        m.add_constraint(60*x[0]+60*x[1] >= 300)
+        m.add_constraint(12*x[0]+ 6*x[1] >= 36)
+        m.add_constraint(10*x[0]+30*x[1] >= 90)
+
+        m.solve()
+
+        computed_solution = m.get_solution_object()
+        real_sol = [3, 2, 0, 12, 0, 0.66]
+        for x_idx in range(len(real_sol)):
+            self.assertAlmostEqual(computed_solution[x_idx],real_sol[x_idx])
+
 if __name__ == '__main__':
     unittest.main()

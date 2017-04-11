@@ -25,6 +25,9 @@ class List_RealNN:
     def __le__(self, other):
         return Constraint(self, "<=", other)
 
+    def __ge__(self, other):
+        return Constraint(self, ">=", other)
+
     def __add__(self, other):
         return List_RealNN(self,other)
 
