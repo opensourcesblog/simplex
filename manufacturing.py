@@ -2,20 +2,23 @@ from Model.model import Model
 import numpy as np
 from time import time
 
-m = Model()
+
+m = Model(print_obj={
+   'start_conf': True
+})
 
 """
 A Manufacturing Example
 
-Machine | Product P | Product Q | Product R | Availability
-A       | 20        | 10        | 10        | 2400
-B       | 12        | 28        | 16        | 2400
-C       | 15        |  6        | 16        | 2400
-D       | 10        | 15        |  0        | 2400
+Machine | Product A | Product B | Product C | Availability
+I       | 20        | 10        | 10        | 2400
+J       | 12        | 28        | 16        | 2400
+K       | 15        |  6        | 16        | 2400
+L       | 10        | 15        |  0        | 2400
 Total   | 57        | 59        | 42        | 9600
 
 
-Item          | Product P | Product Q | Product R
+Item          | Product A | Product B | Product C
 Revenue p.u.  | 90$       | 100$      | 70$
 Material p.u. | 45$       | 40$       | 20$
 Profit p.u.   | 45$       | 60$       | 50$
@@ -25,20 +28,20 @@ Maximize profit
 """
 
 
-p = m.add_var("real+", name="p")
-q = m.add_var("real+", name="q")
-r = m.add_var("real+", name="r")
+a = m.add_var("real+", name="apple")
+b = m.add_var("real+", name="banana")
+c = m.add_var("real+", name="carrot")
 
 
-m.maximize(45*p+60*q+50*r)
+m.maximize(45*a+60*b+50*c)
 
-m.add_constraint(20*p+10*q+10*r <= 2400)
-m.add_constraint(12*p+28*q+16*r <= 2400)
-m.add_constraint(15*p+6*q+16*r <= 2400)
-m.add_constraint(10*p+15*q <= 2400)
-m.add_constraint(p <= 100)
-m.add_constraint(q <= 40)
-m.add_constraint(r <= 60)
+m.add_constraint(20*a+10*b+10*c <= 2400)
+m.add_constraint(12*a+28*b+16*c <= 2400)
+m.add_constraint(15*a+6*b+16*c <= 2400)
+m.add_constraint(10*a+15*b <= 2400)
+m.add_constraint(a <= 100)
+m.add_constraint(b <= 40)
+m.add_constraint(c <= 60)
 
 
 

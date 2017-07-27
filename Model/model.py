@@ -3,6 +3,11 @@ import numpy as np
 from .error import Unsolveable
 from time import time
 
+np.set_printoptions(precision=2,
+                       threshold=100000,
+                       linewidth=500, 
+                       suppress=True)
+
 class Model:
     def __init__(self, print_obj=False):
         self.constraints = []
@@ -44,39 +49,31 @@ class Model:
         self.obj = self.tableau[-1,:]
 
     def find_bfs(self):
-        bfs_idx = []
-        bfs_vars = []
 
         self.redef_matrix_bs_obj()
-
-        # set obj
-        if self.obj_type == self.MINIMIZE:
-            self.tableau[-1,:] = np.append(np.array(self.obj_coefficients), np.zeros((1,1)))
-        elif self.obj_type == self.MAXIMIZE:
-            self.tableau[-1,:] = np.append(-np.array(self.obj_coefficients), np.zeros((1,1)))
 
         if self.obj_type == self.MINIMIZE:
             self.tableau = np.transpose(self.tableau)
             self.tableau[-1,:] = -self.tableau[-1,:]
             self.redef_matrix_bs_obj()
 
+
         self.row_to_var = [False for x in range(self.matrix.shape[0])]
 
         # Build slack variables
-
         identity = np.eye(self.matrix.shape[0])
         identity = np.r_[identity, np.zeros((1,self.matrix.shape[0]))]
         self.tableau = np.c_[self.tableau[:,:-1], identity, self.tableau[:,-1]]
+
 
         self.redef_matrix_bs_obj()
 
         # range not including the b column
         # get all columns which have only one value => basis
+        row = 0
         for c in range(len(self.variables),self.matrix.shape[1]-1):
-            row = np.argwhere(self.matrix[:,c]!=0)[0][0]
-            bfs_idx.append([row,c])
-            bfs_vars.append(c)
             self.row_to_var[row] = c
+            row += 1
 
         if self.p['start_conf']:
             print("Start Tableau:")
@@ -119,6 +116,8 @@ class Model:
         fac = -self.tableau[-1,entering]/self.matrix[leaving_row,entering]
         self.tableau[-1] = fac*self.matrix[leaving_row]+self.tableau[-1]
 
+
+
         # gausian elemination
         for row in range(self.matrix.shape[0]):
             if row != leaving_row:
@@ -127,30 +126,25 @@ class Model:
 
         self.matrix[leaving_row] /= self.matrix[leaving_row,entering]
 
+
         # change basis variables
         self.new_basis(entering, leaving)
 
-        # get an identity matrix again
-        i = 0
-        for row in range(self.matrix.shape[0]):
-            c = self.row_to_var[row]
-            self.matrix[row] /= self.matrix[row,c]
-
-            i += 1
         return False
 
     def print_solution(self):
         if self.obj_type == self.MAXIMIZE:
-            for c in range(len(self.variables)):
-                if np.count_nonzero(self.matrix[:,c]) == 1:
-                    v_idx = np.where(self.matrix[:,c] == 1)[0]
-                    print("%s is %f" % (self.variables[c].name,self.bs[v_idx]))
-            cc = 1
-            for c in range(len(self.variables),self.matrix.shape[1]-1):
-                if np.count_nonzero(self.matrix[:,c]) == 1:
-                    v_idx = np.where(self.matrix[:,c] == 1)[0]
-                    print("slack %s is %f" % (cc,self.bs[v_idx]))
-                cc += 1
+            self.row_to_var = np.array(self.row_to_var)
+            cor_to_variable = self.row_to_var < len(self.variables)
+            for c in range(len(self.row_to_var)):
+                if cor_to_variable[c]:
+                    v_idx = self.row_to_var[c]
+                    print("%s is %f" % (self.variables[v_idx].name,self.bs[c]))
+                
+            for c in range(len(self.row_to_var)):
+                if not cor_to_variable[c]:
+                    v_idx = self.row_to_var[c]
+                    print("slack %d is %f" % ((v_idx-len(self.variables)+1),self.bs[c]))
             print("Obj: %f" % (self.obj[-1]))
         elif self.obj_type == self.MINIMIZE:
             v_idx = self.matrix.shape[1]-len(self.variables)-1
@@ -201,6 +195,14 @@ class Model:
             if self.obj_type == self.MINIMIZE:
                 if constraint.type != ">=":
                     raise Unsolveable("Type %s isn't accepted" % constraint.type)
+        
+
+        # set obj
+        if self.obj_type == self.MINIMIZE:
+            self.tableau[-1,:] = np.append(np.array(self.obj_coefficients), np.zeros((1,1)))
+        elif self.obj_type == self.MAXIMIZE:
+            self.tableau[-1,:] = np.append(-np.array(self.obj_coefficients), np.zeros((1,1)))
+
 
         self.find_bfs()
         solved = self.pivot()
@@ -209,6 +211,6 @@ class Model:
             solved = self.pivot()
             steps += 1
         print("End tableau")
-        print(self.tableau)
+        print(np.around(self.tableau, decimals=1))
         print("Steps: ", steps)
 
