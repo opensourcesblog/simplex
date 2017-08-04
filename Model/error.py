@@ -13,3 +13,8 @@ class NonLinear(Error):
 class Unsolveable(Error):
     def __init__(self, message):
         self.message = message
+
+class Unbounded(Error):
+    def __init__(self, variable):
+        Exception.__init__(self,"%s is unbounded" % variable) 
+

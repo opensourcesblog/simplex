@@ -1,6 +1,6 @@
 from .realNN import RealNN
 import numpy as np
-from .error import Unsolveable
+from .error import *
 from time import time
 
 np.set_printoptions(precision=2,
@@ -57,9 +57,7 @@ class Model:
             self.tableau[-1,:] = -self.tableau[-1,:]
             self.redef_matrix_bs_obj()
 
-
         self.row_to_var = [False for x in range(self.matrix.shape[0])]
-
         # Build slack variables
         identity = np.eye(self.matrix.shape[0])
         identity = np.r_[identity, np.zeros((1,self.matrix.shape[0]))]
@@ -71,7 +69,7 @@ class Model:
         # range not including the b column
         # get all columns which have only one value => basis
         row = 0
-        for c in range(len(self.variables),self.matrix.shape[1]-1):
+        for c in range(self.matrix.shape[1]-1-len(self.row_to_var),self.matrix.shape[1]-1):
             self.row_to_var[row] = c
             row += 1
 
@@ -104,6 +102,9 @@ class Model:
 
                     breaked = True
                     break
+                else:
+                    raise Unbounded(self.variables[c].name)
+                    
         if not breaked:
             return True
 

@@ -2,6 +2,7 @@ import unittest
 from inspect import ismethod
 from Model.model import Model
 import numpy as np
+from Model.error import *
 
 
 class MyTest(unittest.TestCase):
@@ -92,6 +93,26 @@ class MyTest(unittest.TestCase):
         real_sol = [3, 2, 0, 12, 0, 0.66]
         for x_idx in range(len(real_sol)):
             self.assertAlmostEqual(computed_solution[x_idx],real_sol[x_idx])
+            
+    def test_unbound(self):
+        m = Model()
+
+        a = m.add_var("real+", name="a")
+        b = m.add_var("real+", name="b")
+
+
+        m.maximize(3*a-b)
+
+        m.add_constraint(-3*a+3*b <= 6)
+        m.add_constraint(-8*a+4*b <= 4)
+
+        try:
+            m.solve()
+        except Unbounded as e:
+            pass
+        else:
+            self.fail("Should raise Unbounded but didn't")
+        
 
 if __name__ == '__main__':
     unittest.main()
