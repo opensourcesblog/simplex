@@ -93,7 +93,7 @@ class MyTest(unittest.TestCase):
         real_sol = [3, 2, 0, 12, 0, 0.66]
         for x_idx in range(len(real_sol)):
             self.assertAlmostEqual(computed_solution[x_idx],real_sol[x_idx])
-            
+
     def test_unbound(self):
         m = Model()
 
@@ -112,7 +112,9 @@ class MyTest(unittest.TestCase):
             pass
         else:
             self.fail("Should raise Unbounded but didn't")
-        
+
 
 if __name__ == '__main__':
     unittest.main()
+    # t = MyTest()
+    # t.test_minimize_2v_3c_2o()
