@@ -2,24 +2,39 @@ from Model.model import Model
 import numpy as np
 from time import time
 
-# http://ftp.mcs.anl.gov/pub/tech_reports/reports/P602.pdf
-
 m = Model(print_obj={
    'start_conf': True
 })
 
-a = m.add_var("real+", name="corn")
-b = m.add_var("real+", name="milk")
-c = m.add_var("real+", name="bread")
+a = m.add_var("real+", name="oat")
+b = m.add_var("real+", name="chicken")
+c = m.add_var("real+", name="egg")
+d = m.add_var("real+", name="milk")
+e = m.add_var("real+", name="cake")
+f = m.add_var("real+", name="bean")
 
 
-m.minimize(0.18*a+0.23*b+0.05*c)
+m.minimize(25*a+130*b+85*c+70*d+95*e+98*f)
 
-# vitamin a
-m.add_constraint(107*a+500*b+0*c >= 5000)
-# cal
-m.add_constraint(72*a+121*b+65*c >= 2000)
+# calories
+m.add_constraint(110*a+205*b+160*c+160*d+420*e+260*f >= 2000)
+# proteins
+m.add_constraint(4*a+32*b+13*c+8*d+4*e+14*f >= 55)
+# calcium
+m.add_constraint(2*a+12*b+54*c+285*d+22*e+80*f >= 800)
 
+# oats
+m.add_constraint(a <= 4)
+# chicken
+m.add_constraint(b <= 3)
+# egg
+m.add_constraint(c <= 2)
+# milk
+m.add_constraint(d <= 8)
+# cake
+m.add_constraint(e <= 1)
+# bean
+m.add_constraint(f <= 2)
 
 
 t0 = time()

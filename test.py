@@ -8,7 +8,7 @@ from Model.error import *
 class MyTest(unittest.TestCase):
     def test_maximize_2v_4c_1o(self):
 
-        m = Model()
+        m = Model(print_obj={})
 
         x = []
         for i in range(1,3):
@@ -31,7 +31,7 @@ class MyTest(unittest.TestCase):
             self.assertAlmostEqual(computed_solution[x_idx],real_sol[x_idx])
 
     def test_maximize_2v_4c_2o(self):
-        m = Model()
+        m = Model(print_obj={})
 
         x = []
         for i in range(1,3):
@@ -54,7 +54,7 @@ class MyTest(unittest.TestCase):
             self.assertAlmostEqual(computed_solution[x_idx],real_sol[x_idx])
 
     def test_maximize_4v_3c_3o(self):
-        m = Model()
+        m = Model(print_obj={})
 
         x = []
         for i in range(1,5):
@@ -75,7 +75,7 @@ class MyTest(unittest.TestCase):
             self.assertAlmostEqual(computed_solution[x_idx],real_sol[x_idx])
 
     def test_minimize_2v_3c_2o(self):
-        m = Model()
+        m = Model(print_obj={})
 
         x = []
         for i in range(1,3):
@@ -95,7 +95,7 @@ class MyTest(unittest.TestCase):
             self.assertAlmostEqual(computed_solution[x_idx],real_sol[x_idx])
 
     def test_unbound(self):
-        m = Model()
+        m = Model(print_obj={})
 
         a = m.add_var("real+", name="a")
         b = m.add_var("real+", name="b")
@@ -112,6 +112,45 @@ class MyTest(unittest.TestCase):
             pass
         else:
             self.fail("Should raise Unbounded but didn't")
+
+    def test_diet(self):
+        m = Model(print_obj={})
+
+        a = m.add_var("real+", name="oat")
+        b = m.add_var("real+", name="chicken")
+        c = m.add_var("real+", name="egg")
+        d = m.add_var("real+", name="milk")
+        e = m.add_var("real+", name="cake")
+        f = m.add_var("real+", name="bean")
+
+        m.minimize(25 * a + 130 * b + 85 * c + 70 * d + 95 * e + 98 * f)
+
+        # calories
+        m.add_constraint(110 * a + 205 * b + 160 * c + 160 * d + 420 * e + 260 * f >= 2000)
+        # proteins
+        m.add_constraint(4 * a + 32 * b + 13 * c + 8 * d + 4 * e + 14 * f >= 55)
+        # calcium
+        m.add_constraint(2 * a + 12 * b + 54 * c + 285 * d + 22 * e + 80 * f >= 800)
+
+        # oats
+        m.add_constraint(a <= 4)
+        # chicken
+        m.add_constraint(b <= 3)
+        # egg
+        m.add_constraint(c <= 2)
+        # milk
+        m.add_constraint(d <= 8)
+        # cake
+        m.add_constraint(e <= 1)
+        # bean
+        m.add_constraint(f <= 2)
+
+        m.solve()
+
+        computed_solution = m.get_solution_object()
+        real_sol = [4.0, 0, 2.0, 1.757543580214139, 0, 0, 0, 35.993894345641465, 0, 0, 2.9083266967522219, 0, 6.2424564197857819, 0, 0, 695.94558003718805]
+        for x_idx in range(len(real_sol)):
+            self.assertAlmostEqual(computed_solution[x_idx], real_sol[x_idx])
 
 
 if __name__ == '__main__':

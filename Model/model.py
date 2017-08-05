@@ -17,12 +17,12 @@ class Model:
         self.MAXIMIZE = 1
         self.steps = 1
 
-        if not print_obj:
-            self.p = {}
+        if print_obj is False:
+            self.p = {'information': True}
         else:
             self.p = print_obj
 
-        l = ['start_conf','leaving_entering']
+        l = ['start_conf','information','leaving_entering']
         for pl in l:
             if pl not in self.p:
                 self.p[pl] = False
@@ -49,12 +49,9 @@ class Model:
         self.bs = self.tableau[:-1,-1]
         self.obj = self.tableau[-1,:]
 
-    def to_maximize(self):
-        self.tableau *= -1
-
     def to_standard(self):
         if self.obj_type == self.MINIMIZE:
-            self.to_maximize()
+            self.tableau *= -1
         self.redef_matrix_bs_obj()
         if np.any(self.bs < 0):
             # solve start problem
@@ -99,9 +96,7 @@ class Model:
         else:
             self.find_bfs()
 
-
     def find_bfs(self):
-
         self.redef_matrix_bs_obj()
 
         self.row_to_var = [False for x in range(self.matrix.shape[0])]
@@ -202,7 +197,6 @@ class Model:
 
     def get_solution_object(self):
         sol_row = []
-
         for c in range(self.matrix.shape[1]-1):
             if np.count_nonzero(self.matrix[:,c]) == 1:
                 v_idx = np.where(self.matrix[:,c] == 1)[0][0]
@@ -220,25 +214,25 @@ class Model:
 
         self.tableau = np.zeros((len(self.constraints)+1,len(self.variables)+1))
 
-        print("Solve")
-        print("Information: ")
-        print("We have %d variables " % len(self.variables))
-        print("We have %d constraints " % len(self.constraints))
+        if self.p['information']:
+            print("Information: ")
+            print("We have %d variables " % len(self.variables))
+            print("We have %d constraints " % len(self.constraints))
         i = 0
         for constraint in self.constraints:
             coefficients = constraint.x.get_coefficients(len(self.variables))
             # if constraint.y < 0:
             #     raise Unsolveable("All constants on the right side must be non-negative")
             self.tableau[i] = coefficients+[constraint.y]
-            i += 1
+
 
             if self.obj_type == self.MAXIMIZE:
                 if constraint.type != "<=":
-                    raise Unsolveable("Type %s isn't accepted" % constraint.type)
+                    self.tableau[i] *= -1
             if self.obj_type == self.MINIMIZE:
                 if constraint.type != ">=":
-                    raise Unsolveable("Type %s isn't accepted" % constraint.type)
-
+                    self.tableau[i] *= -1
+            i += 1
 
         # set obj
         self.tableau[-1,:] = np.append(-np.array(self.obj_coefficients), np.zeros((1,1)))
@@ -249,7 +243,7 @@ class Model:
         while not solved:
             solved = self.pivot()
             self.steps += 1
-        print("End tableau")
-        print(np.around(self.tableau, decimals=1))
-        print("Steps: ", self.steps)
+        # print("End tableau")
+        # print(np.around(self.tableau, decimals=1))
+        # print("Steps: ", self.steps)
 
