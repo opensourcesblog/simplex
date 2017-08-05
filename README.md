@@ -3,14 +3,14 @@
 
 How the simplex algorithm works is described in my blog article on [opensourc.es](http://opensourc.es/blog/simplex).
 
-There are several examples to show you how to use the algorithm in:
+There are several examples to show you how to use the algorithm in the `examples` folder.
 
+You can start the diet example using 
 ```
-manufacturing.py
-post.py
+python -m examples.diet
 ```
 
-They look basically like this:
+The general structure of each example looks like this:
 
 ```
 m = Model()

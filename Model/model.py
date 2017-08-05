@@ -8,6 +8,7 @@ np.set_printoptions(precision=2,
                        linewidth=500,
                        suppress=True)
 
+
 class Model:
     def __init__(self, print_obj=False):
         self.constraints = []

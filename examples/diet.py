@@ -1,6 +1,7 @@
-from Model.model import Model
 import numpy as np
 from time import time
+
+from Model.model import Model
 
 m = Model(print_obj={
    'start_conf': True
