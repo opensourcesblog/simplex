@@ -89,3 +89,5 @@ ENV/
 
 # Ignore SQLite database
 *.sqlite3
+
+.idea/
