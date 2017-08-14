@@ -5,7 +5,7 @@ from time import time
 
 np.set_printoptions(precision=2,
                        threshold=100000,
-                       linewidth=500,
+                       linewidth=600,
                        suppress=True)
 
 
@@ -23,7 +23,7 @@ class Model:
         else:
             self.p = print_obj
 
-        l = ['start_conf','information','leaving_entering']
+        l = ['start_conf','information','leaving_entering','end_conf', 'timing']
         for pl in l:
             if pl not in self.p:
                 self.p[pl] = False
@@ -70,10 +70,11 @@ class Model:
             # get biggest b
             row = np.argmin(self.bs)
             self.gauss_step(row,len(self.variables))
-            solved = self.pivot()
+            solved, _ = self.pivot()
             while not solved:
-                solved = self.pivot()
+                solved, _ = self.pivot()
                 self.steps += 1
+
             # if x_0 is 0 => we have a bfs for our real maximization problem
             if self.obj[-1] == 0:
                 # remove the x_0 column
@@ -133,9 +134,8 @@ class Model:
 
         # check if the current tableau is optimal
         # if optimal every value in obj is non negative
+        get_l_e = time()
         for c in np.argsort(self.obj[:-1]):
-            if c in self.row_to_var:
-                continue
             if self.obj[c] < 0:
                 positive = np.where(self.matrix[:,c] > 0)[0]
                 if len(positive):
@@ -148,9 +148,10 @@ class Model:
                     break
                 else:
                     raise Unbounded(self.variables[c].name)
-
+        get_l_e = time()-get_l_e
         if not breaked:
-            return True
+            return True, get_l_e
+
 
         if self.p['leaving_entering']:
             print("Leaving is %d" % leaving)
@@ -159,18 +160,18 @@ class Model:
 
         self.gauss_step(leaving_row, entering)
 
-        return False
+        return False, get_l_e
 
     def gauss_step(self, leaving_row, entering):
         # get the new objective function
         fac = -self.tableau[-1, entering] / self.matrix[leaving_row, entering]
         self.tableau[-1] = fac * self.matrix[leaving_row] + self.tableau[-1]
 
-        # gausian elemination
-        for row in range(self.matrix.shape[0]):
-            if row != leaving_row:
-                fac = -self.matrix[row, entering] / self.matrix[leaving_row, entering]
-                self.matrix[row] = fac * self.matrix[leaving_row] + self.matrix[row]
+        # gausian elimination
+        facs = -self.matrix[:, entering] / self.matrix[leaving_row, entering]
+        facs[leaving_row] = 0
+
+        self.matrix += facs[:, np.newaxis] * self.matrix[leaving_row, np.newaxis, :]
 
         self.matrix[leaving_row] /= self.matrix[leaving_row, entering]
 
@@ -179,18 +180,18 @@ class Model:
         self.new_basis(entering, leaving)
 
 
-    def print_solution(self):
+    def print_solution(self,slack=False):
         self.row_to_var = np.array(self.row_to_var)
         cor_to_variable = self.row_to_var < len(self.variables)
         for c in range(len(self.row_to_var)):
             if cor_to_variable[c]:
                 v_idx = self.row_to_var[c]
                 print("%s is %f" % (self.variables[v_idx].name,self.bs[c]))
-
-        for c in range(len(self.row_to_var)):
-            if not cor_to_variable[c]:
-                v_idx = self.row_to_var[c]
-                print("slack %d is %f" % ((v_idx-len(self.variables)+1),self.bs[c]))
+        if slack:
+            for c in range(len(self.row_to_var)):
+                if not cor_to_variable[c]:
+                    v_idx = self.row_to_var[c]
+                    print("slack %d is %f" % ((v_idx-len(self.variables)+1),self.bs[c]))
         if self.obj_type == self.MAXIMIZE:
             print("Obj: %f" % (self.obj[-1]))
         elif self.obj_type == self.MINIMIZE:
@@ -240,11 +241,27 @@ class Model:
 
         self.to_standard()
 
-        solved = self.pivot()
+        solved, tim_l_e = self.pivot()
+        total = 0
+        this_steps = 0
+        total_l_e = 0
         while not solved:
-            solved = self.pivot()
+            s = time()
+            solved, tim_l_e = self.pivot()
+            total += time()-s
+            total_l_e += tim_l_e
+            this_steps += 1
             self.steps += 1
-        # print("End tableau")
-        # print(np.around(self.tableau, decimals=1))
-        # print("Steps: ", self.steps)
+
+        if self.p['timing'] and this_steps > 0:
+            print("Steps in last part", this_steps)
+            print("Total time: ", total)
+            print("per step", total/this_steps)
+            print("Total le time: ", total_l_e)
+            print("per step le", total_l_e / this_steps)
+
+        if self.p['end_conf']:
+            print("End tableau")
+            print(np.around(self.tableau, decimals=1))
+            print("Steps: ", self.steps)
 

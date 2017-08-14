@@ -1,11 +1,12 @@
 import numpy as np
 from time import time
 import random, string
+random.seed(9001)
 
 from Model.model import Model
 
 m = Model(print_obj={
-   'end_conf': True
+   # 'start_conf': True
 })
 
 def get_keys(obj):
@@ -29,6 +30,8 @@ ingredients = {
         "kcal": 110,
         "protein": 4,
         "calcium": 2,
+        "vitB12": 10,
+        "vitC": 12,
         "price": 25,
         "max": 4
     },
@@ -36,6 +39,8 @@ ingredients = {
         "kcal": 205,
         "protein": 32,
         "calcium": 12,
+        "vitB12": 5,
+        "vitC": 2,
         "price": 130,
         "max": 3
     },
@@ -43,6 +48,8 @@ ingredients = {
         "kcal": 160,
         "protein": 13,
         "calcium": 54,
+        "vitB12": 5,
+        "vitC": 2,
         "price": 85,
         "max": 2
     },
@@ -50,6 +57,8 @@ ingredients = {
         "kcal": 160,
         "protein": 8,
         "calcium": 285,
+        "vitB12": 5,
+        "vitC": 2,
         "price": 70,
         "max": 8
     },
@@ -57,6 +66,8 @@ ingredients = {
         "kcal": 420,
         "protein": 4,
         "calcium": 22,
+        "vitB12": 5,
+        "vitC": 2,
         "price": 95,
         "max": 1
     },
@@ -64,6 +75,8 @@ ingredients = {
         "kcal": 260,
         "protein": 14,
         "calcium": 80,
+        "vitB12": 5,
+        "vitC": 2,
         "price": 98,
         "max": 2
     }
@@ -73,7 +86,26 @@ MIN_REQ = {
     "kcal": 2000,
     "protein": 55,
     "calcium": 800,
+    "vitB12": 100,
+    "vitC": 130,
 }
+
+
+ingredients = {}
+for j in range(100):
+    nut = "".join([random.choice(string.ascii_letters) for d in range(10)])
+    MIN_REQ[nut] = random.randint(50,2000)
+
+
+
+for i in range(1000):
+    ing = "".join( [random.choice(string.ascii_letters) for d in range(15)] )
+    ingredients[ing] = {}
+    for nut in MIN_REQ:
+        nut_val = random.randint(MIN_REQ[nut]//100,MIN_REQ[nut]//10)
+        ingredients[ing][nut] = nut_val
+    ingredients[ing]["price"] = random.randint(15,90)
+    ingredients[ing]["max"] = random.randint(1,3)
 
 list_of_ingredients = get_keys(ingredients)
 
