@@ -28,10 +28,10 @@ class Model:
             if pl not in self.p:
                 self.p[pl] = False
 
-    def add_var(self, ty, name="NA", value=None):
+    def add_var(self, ty, name="NA", ub=None, lb=None, value=None):
         if ty == "real+":
             x = RealNN(name,value,index=len(self.variables))
-            self.variables.append(x)
+            self.variables.append({"x": x,"ub": ub,"lb": lb})
             return x
 
     def maximize(self, obj):
@@ -79,6 +79,9 @@ class Model:
             if self.obj[-1] == 0:
                 # remove the x_0 column
                 self.tableau = np.c_[self.tableau[:,:len(self.variables)],self.tableau[:,len(self.variables)+1:]]
+                # update self.row_to_var
+                self.row_to_var[self.row_to_var > len(self.variables)] -= 1
+
                 self.redef_matrix_bs_obj()
                 rows = np.where(self.row_to_var < len(self.variables))[0]
                 vs = []
@@ -136,6 +139,8 @@ class Model:
         # if optimal every value in obj is non negative
         get_l_e = time()
         for c in np.argsort(self.obj[:-1]):
+            if c in self.row_to_var:
+                continue
             if self.obj[c] < 0:
                 positive = np.where(self.matrix[:,c] > 0)[0]
                 if len(positive):
@@ -147,7 +152,7 @@ class Model:
                     breaked = True
                     break
                 else:
-                    raise Unbounded(self.variables[c].name)
+                    raise Unbounded(self.variables[c]["x"].name)
         get_l_e = time()-get_l_e
         if not breaked:
             return True, get_l_e
@@ -186,7 +191,7 @@ class Model:
         for c in range(len(self.row_to_var)):
             if cor_to_variable[c]:
                 v_idx = self.row_to_var[c]
-                print("%s is %f" % (self.variables[v_idx].name,self.bs[c]))
+                print("%s is %f" % (self.variables[v_idx]["x"].name,self.bs[c]))
         if slack:
             for c in range(len(self.row_to_var)):
                 if not cor_to_variable[c]:
@@ -213,7 +218,6 @@ class Model:
         return sol_row
 
     def solve(self):
-
         self.tableau = np.zeros((len(self.constraints)+1,len(self.variables)+1))
 
         if self.p['information']:

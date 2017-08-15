@@ -148,7 +148,7 @@ class MyTest(unittest.TestCase):
         m.solve()
 
         computed_solution = m.get_solution_object()
-        real_sol = [4.0, 0, 0, 3.8750000000005276, 0, 0, 0, 24.000000000003393, 494.37500000014592, 0, 3.0, 2.0, 4.1249999999993552, 0, 0, 662.25000000001796]
+        real_sol = [4.0, 0, 0, 3.8750000000005276, 0, 0, 0, 24.000000000003393, 0, 0, 3.0, 2.0, 4.1249999999993552, 0, 0, 662.25000000001796]
         for x_idx in range(len(real_sol)):
             self.assertAlmostEqual(computed_solution[x_idx], real_sol[x_idx])
 

@@ -111,7 +111,7 @@ list_of_ingredients = get_keys(ingredients)
 
 x = []
 for ing in list_of_ingredients:
-    x.append(m.add_var("real+", name=ing))
+    x.append(m.add_var("real+", name=ing, ub=ingredients[ing]["max"]))
 x = np.array(x)
 
 m.minimize(sum(get_by_key(ingredients,"price", list_of_ingredients)*x))
@@ -120,10 +120,12 @@ for cst in MIN_REQ:
     left = get_by_key(ingredients,cst, list_of_ingredients)
     m.add_constraint(sum(left*x) >= MIN_REQ[cst])
 
+"""
 i = 0
 for ing in list_of_ingredients:
     m.add_constraint(x[i] <= ingredients[ing]['max'])
     i += 1
+"""
 print("all added")
 
 t0 = time()
