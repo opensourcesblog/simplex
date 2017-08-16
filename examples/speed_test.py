@@ -6,7 +6,8 @@ random.seed(9001)
 from Model.model import Model
 
 m = Model(print_obj={
-   # 'start_conf': True
+    'information': True,
+    'timing': True
 })
 
 def get_keys(obj):
@@ -90,15 +91,14 @@ MIN_REQ = {
     "vitC": 130,
 }
 
+MIN_REQ = {}
 
 ingredients = {}
-for j in range(100):
+for j in range(1200):
     nut = "".join([random.choice(string.ascii_letters) for d in range(10)])
     MIN_REQ[nut] = random.randint(50,2000)
 
-
-
-for i in range(1000):
+for i in range(100):
     ing = "".join( [random.choice(string.ascii_letters) for d in range(15)] )
     ingredients[ing] = {}
     for nut in MIN_REQ:
@@ -133,3 +133,4 @@ m.solve()
 print("Solved in %f" % (time()-t0))
 
 m.print_solution(slack=False)
+print("Steps: ",m.steps)

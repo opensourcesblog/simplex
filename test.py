@@ -26,7 +26,7 @@ class MyTest(unittest.TestCase):
         m.solve()
 
         computed_solution = m.get_solution_object()
-        real_sol = [0.23076923076923078, 1.8461538461538463, 0, 0, 1.3076923076923077, 1.6923076923076923, 5.5384615384615383]
+        real_sol = [0.23076923076923078, 1.8461538461538463, 5.5384615384615383]
         for x_idx in range(len(real_sol)):
             self.assertAlmostEqual(computed_solution[x_idx],real_sol[x_idx])
 
@@ -49,7 +49,7 @@ class MyTest(unittest.TestCase):
         m.solve()
 
         computed_solution = m.get_solution_object()
-        real_sol = [1.5, 1, 0, 5.5, 3.0, 0, 9]
+        real_sol = [1.5, 1, 9]
         for x_idx in range(len(real_sol)):
             self.assertAlmostEqual(computed_solution[x_idx],real_sol[x_idx])
 
@@ -70,7 +70,7 @@ class MyTest(unittest.TestCase):
         m.solve()
 
         computed_solution = m.get_solution_object()
-        real_sol = [0, 15.0, 0, 25.0, 0, 20.0, 0, 145.0]
+        real_sol = [0, 15.0, 0, 25.0, 145.0]
         for x_idx in range(len(real_sol)):
             self.assertAlmostEqual(computed_solution[x_idx],real_sol[x_idx])
 
@@ -90,7 +90,7 @@ class MyTest(unittest.TestCase):
         m.solve()
 
         computed_solution = m.get_solution_object()
-        real_sol = [3, 2, 0, 12, 0, 0.66]
+        real_sol = [3, 2, 0.66]
         for x_idx in range(len(real_sol)):
             self.assertAlmostEqual(computed_solution[x_idx],real_sol[x_idx])
 
@@ -148,7 +148,7 @@ class MyTest(unittest.TestCase):
         m.solve()
 
         computed_solution = m.get_solution_object()
-        real_sol = [4.0, 0, 0, 3.8750000000005276, 0, 0, 0, 24.000000000003393, 0, 0, 3.0, 2.0, 4.1249999999993552, 0, 0, 662.25000000001796]
+        real_sol = [4.0, 0, 0, 3.8750000000005276, 1, 2, 662.25000000001796]
         for x_idx in range(len(real_sol)):
             self.assertAlmostEqual(computed_solution[x_idx], real_sol[x_idx])
 

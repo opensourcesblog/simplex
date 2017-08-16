@@ -16,7 +16,9 @@ class Model:
 
         self.MINIMIZE = -1
         self.MAXIMIZE = 1
+        self.DUAL = False
         self.steps = 1
+        self.nof_var_cols = 0
 
         if print_obj is False:
             self.p = {'information': True}
@@ -50,6 +52,12 @@ class Model:
         self.bs = self.tableau[:-1,-1]
         self.obj = self.tableau[-1,:]
 
+    def to_dual(self):
+        self.tableau = self.tableau.T
+        # number of cols for variables changed =>
+        self.nof_var_cols = self.tableau.shape[1]-1
+        self.obj_type = self.MAXIMIZE if self.obj_type == self.MINIMIZE else self.MINIMIZE
+
     def to_standard(self):
         if self.obj_type == self.MINIMIZE:
             self.tableau *= -1
@@ -69,7 +77,7 @@ class Model:
             self.find_bfs()
             # get biggest b
             row = np.argmin(self.bs)
-            self.gauss_step(row,len(self.variables))
+            self.gauss_step(row,self.nof_var_cols)
             solved, _ = self.pivot()
             while not solved:
                 solved, _ = self.pivot()
@@ -78,18 +86,18 @@ class Model:
             # if x_0 is 0 => we have a bfs for our real maximization problem
             if self.obj[-1] == 0:
                 # remove the x_0 column
-                self.tableau = np.c_[self.tableau[:,:len(self.variables)],self.tableau[:,len(self.variables)+1:]]
+                self.tableau = np.c_[self.tableau[:,:self.nof_var_cols],self.tableau[:,self.nof_var_cols+1:]]
                 # update self.row_to_var
-                self.row_to_var[self.row_to_var > len(self.variables)] -= 1
+                self.row_to_var[self.row_to_var > self.nof_var_cols] -= 1
 
                 self.redef_matrix_bs_obj()
-                rows = np.where(self.row_to_var < len(self.variables))[0]
+                rows = np.where(self.row_to_var < self.nof_var_cols)[0]
                 vs = []
                 for row in rows:
                     v = self.row_to_var[row]
                     self.obj += first_obj[v]*self.tableau[row]
                     vs.append(v)
-                for v in range(len(self.variables)):
+                for v in range(self.nof_var_cols):
                     if v not in vs:
                         self.obj[v] -= first_obj[v]
                         pass
@@ -133,30 +141,29 @@ class Model:
                 break
 
     def pivot(self):
-        breaked = False
-
         # check if the current tableau is optimal
         # if optimal every value in obj is non negative
         get_l_e = time()
-        for c in np.argsort(self.obj[:-1]):
-            if c in self.row_to_var:
-                continue
-            if self.obj[c] < 0:
-                positive = np.where(self.matrix[:,c] > 0)[0]
-                if len(positive):
-                    entering = c
-                    l = np.argmin(self.bs[positive]/self.matrix[positive,c])
-                    leaving_row = positive[l]
-                    leaving = self.row_to_var[leaving_row]
+        min_not_in_basis = np.copy(self.obj[:-1])
+        min_not_in_basis[self.row_to_var] = 0 # non negative
+        c = np.argmin(min_not_in_basis)
+        get_l_e = time() - get_l_e
 
-                    breaked = True
-                    break
-                else:
-                    raise Unbounded(self.variables[c]["x"].name)
-        get_l_e = time()-get_l_e
-        if not breaked:
+
+        if self.obj[c] < 0:
+            positive = np.where(self.matrix[:,c] > 0)[0]
+            if len(positive):
+                entering = c
+                l = np.argmin(self.bs[positive]/self.matrix[positive,c])
+                leaving_row = positive[l]
+                leaving = self.row_to_var[leaving_row]
+            else:
+                raise Unbounded(self.variables[c]["x"].name)
+        else:
+            # get_l_e = time()-get_l_e
             return True, get_l_e
 
+        # get_l_e = time()-get_l_e
 
         if self.p['leaving_entering']:
             print("Leaving is %d" % leaving)
@@ -184,32 +191,48 @@ class Model:
         leaving = self.row_to_var[leaving_row]
         self.new_basis(entering, leaving)
 
+    def check_if_dual(self):
+        if self.DUAL:
+            return
+        if self.obj_type == self.MINIMIZE:
+            if len(self.variables)/8 < len(self.constraints):
+                self.DUAL = True
 
     def print_solution(self,slack=False):
-        self.row_to_var = np.array(self.row_to_var)
-        cor_to_variable = self.row_to_var < len(self.variables)
-        for c in range(len(self.row_to_var)):
-            if cor_to_variable[c]:
-                v_idx = self.row_to_var[c]
-                print("%s is %f" % (self.variables[v_idx]["x"].name,self.bs[c]))
-        if slack:
+        if self.DUAL:
+            for c in range(self.nof_var_cols,self.nof_var_cols+len(self.variables)):
+                v_idx = c-self.nof_var_cols
+                if self.obj[c] > 0:
+                    print("%s is %f" % (self.variables[v_idx]["x"].name, self.obj[c]))
+        else:
+            cor_to_variable = self.row_to_var < len(self.variables)
             for c in range(len(self.row_to_var)):
-                if not cor_to_variable[c]:
+                if cor_to_variable[c]:
                     v_idx = self.row_to_var[c]
-                    print("slack %d is %f" % ((v_idx-len(self.variables)+1),self.bs[c]))
+                    print("%s is %f" % (self.variables[v_idx]["x"].name,self.bs[c]))
+        if slack:
+            if self.DUAL:
+                print("Problem solved using dual simplex => no slack variables possible")
+            else:
+                for c in range(len(self.row_to_var)):
+                    if not cor_to_variable[c]:
+                        v_idx = self.row_to_var[c]
+                        print("slack %d is %f" % ((v_idx-len(self.variables)+1),self.bs[c]))
         if self.obj_type == self.MAXIMIZE:
             print("Obj: %f" % (self.obj[-1]))
         elif self.obj_type == self.MINIMIZE:
             print("Obj: %f" % (-self.obj[-1]))
 
     def get_solution_object(self):
-        sol_row = []
-        for c in range(self.matrix.shape[1]-1):
-            if np.count_nonzero(self.matrix[:,c]) == 1:
-                v_idx = np.where(self.matrix[:,c] == 1)[0][0]
-                sol_row.append(self.bs[v_idx])
-            else:
-                sol_row.append(0)
+        if self.DUAL:
+            sol_row = list(self.obj[self.nof_var_cols:-1])
+        else:
+            cor_to_variable = self.row_to_var < len(self.variables)
+            sol_row = [0]*len(self.variables)
+            for c in range(len(self.row_to_var)):
+                if cor_to_variable[c]:
+                    v_idx = self.row_to_var[c]
+                    sol_row[v_idx] = self.bs[c]
         if self.obj_type == self.MAXIMIZE:
             sol_row.append(self.obj[-1])
         elif self.obj_type == self.MINIMIZE:
@@ -224,6 +247,8 @@ class Model:
             print("Information: ")
             print("We have %d variables " % len(self.variables))
             print("We have %d constraints " % len(self.constraints))
+
+        self.nof_var_cols = len(self.variables)
         i = 0
         for constraint in self.constraints:
             coefficients = constraint.x.get_coefficients(len(self.variables))
@@ -241,9 +266,17 @@ class Model:
             i += 1
 
         # set obj
-        self.tableau[-1,:] = np.append(-np.array(self.obj_coefficients), np.zeros((1,1)))
+        self.tableau[-1,:] = np.append(np.array(self.obj_coefficients), np.zeros((1,1)))
 
+        self.check_if_dual()
+        if self.DUAL:
+            self.to_dual()
+
+        self.tableau[-1, :] = -self.tableau[-1,:]
+
+        t_to_standard = time()
         self.to_standard()
+        t_to_standard = time()-t_to_standard
 
         solved, tim_l_e = self.pivot()
         total = 0
@@ -258,6 +291,7 @@ class Model:
             self.steps += 1
 
         if self.p['timing'] and this_steps > 0:
+            print("To standard time", t_to_standard)
             print("Steps in last part", this_steps)
             print("Total time: ", total)
             print("per step", total/this_steps)
