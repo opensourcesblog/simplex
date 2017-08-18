@@ -34,6 +34,7 @@ class Model:
             'timing': False
         }
 
+        # This would work Python >= 3.5
         # self.p = {**default_print_obj, **print_obj}
         self.p = default_print_obj.copy()
         self.p.update(print_obj)
