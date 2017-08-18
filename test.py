@@ -34,6 +34,7 @@ def fill_ING(MIN_REQ,n,vals=False):
     if vals is False:
         vals = {'max': 4}
     ingredients = {}
+    list_of_ingredients = []
     for i in range(n):
         ing = "".join([random.choice(string.ascii_letters) for d in range(15)])
         ingredients[ing] = {}
@@ -42,7 +43,8 @@ def fill_ING(MIN_REQ,n,vals=False):
             ingredients[ing][nut] = nut_val
         ingredients[ing]["price"] = random.randint(15, 90)
         ingredients[ing]["max"] = random.randint(1, vals['max'])
-    return ingredients
+        list_of_ingredients.append(ing)
+    return ingredients, list_of_ingredients
 
 class MyTest(unittest.TestCase):
     def test_maximize_2v_4c_1o(self):
@@ -201,9 +203,8 @@ class MyTest(unittest.TestCase):
         })
 
         MIN_REQ = fill_MIN_REQ(100)
-        ingredients = fill_ING(MIN_REQ,2000, {'max': 4})
+        ingredients, list_of_ingredients = fill_ING(MIN_REQ,2000, {'max': 4})
 
-        list_of_ingredients = get_keys(ingredients)
 
         x = []
         for ing in list_of_ingredients:
@@ -249,10 +250,8 @@ class MyTest(unittest.TestCase):
 
 
         MIN_REQ = fill_MIN_REQ(10)
-        ingredients = fill_ING(MIN_REQ,10, {'max': 3})
+        ingredients, list_of_ingredients = fill_ING(MIN_REQ,10, {'max': 3})
 
-
-        list_of_ingredients = get_keys(ingredients)
 
         x = []
         for ing in list_of_ingredients:
