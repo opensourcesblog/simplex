@@ -2,6 +2,7 @@ from .realNN import RealNN
 import numpy as np
 from .error import *
 from time import time
+import sys
 
 np.set_printoptions(precision=2,
                        threshold=1000000,
@@ -33,7 +34,12 @@ class Model:
             'end_conf': False,
             'timing': False
         }
-        self.p = {**default_print_obj, **print_obj}
+
+        if sys.version_info[0] == 3 and sys.version_info[1] >= 5:
+            self.p = {**default_print_obj, **print_obj}
+        else:
+            self.p = default_print_obj.copy()
+            self.p.update(print_obj)
 
     def add_var(self, ty, name="NA", ub=None, lb=None, value=None):
         if ty == "real+":

@@ -10,6 +10,9 @@ You can start the diet example using
 python -m examples.diet
 ```
 
+Python3 is recommended for this project. All tests are run on Python >= 3.2. 
+
+
 The general structure of each example looks like this:
 
 ```
