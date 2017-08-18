@@ -4,31 +4,36 @@ from .error import *
 from time import time
 
 np.set_printoptions(precision=2,
-                       threshold=100000,
+                       threshold=1000000,
                        linewidth=600,
                        suppress=True)
 
 
 class Model:
-    def __init__(self, print_obj=False):
+    def __init__(self, print_obj={}):
         self.constraints = []
         self.variables = []
 
         self.MINIMIZE = -1
         self.MAXIMIZE = 1
         self.DUAL = False
+
+        self.DEF_DUAL = 2
+        self.TEST_DUAL = 1
+        self.NO_DUAL = 0
+
+
         self.steps = 1
         self.nof_var_cols = 0
 
-        if print_obj is False:
-            self.p = {'information': True}
-        else:
-            self.p = print_obj
-
-        l = ['start_conf','information','leaving_entering','end_conf', 'timing']
-        for pl in l:
-            if pl not in self.p:
-                self.p[pl] = False
+        default_print_obj = {
+            'information': True,
+            'start_conf': False,
+            'leaving_entering': False,
+            'end_conf': False,
+            'timing': False
+        }
+        self.p = {**default_print_obj, **print_obj}
 
     def add_var(self, ty, name="NA", ub=None, lb=None, value=None):
         if ty == "real+":
@@ -46,6 +51,69 @@ class Model:
 
     def add_constraint(self,constraint):
         self.constraints.append(constraint)
+
+    def add_lazy_constraint(self, constraint):
+        if self.DUAL:
+            print("Can't use add_lazy_constraint in dual mode atm")
+            exit(1)
+
+        self.constraints.append(constraint)
+
+        # adjusting the matrix
+        # add constraint to matrix
+        coefficients = constraint.x.get_coefficients(len(self.variables))
+        zeros = [0]*(self.tableau.shape[1]-1-len(self.variables))
+        new_constraint_line = np.array(coefficients + zeros + [constraint.y])
+        if constraint.type != "<=":
+            new_constraint_line *= -1
+        new_constraint_line = new_constraint_line[np.newaxis, :]
+        self.tableau = np.r_[self.tableau[:-1], new_constraint_line, self.tableau[-1, np.newaxis]]
+
+        # add slack variable
+        one_slack = np.zeros((self.tableau.shape[0],1))
+        one_slack[-2] = 1
+        self.tableau = np.c_[self.tableau[:,:-1], one_slack, self.tableau[:,-1][:,np.newaxis]]
+
+        # A_m+1=A_m+1-A_(m+1,B)*A*
+        A = self.tableau[:-1]
+        A_star = self.tableau[:-1,:len(self.variables)][:-1]
+        A_m1 = A[-1]
+        A_m1B = A_m1[self.row_to_var]
+        self.tableau[-2][:len(self.variables)] -= A_m1B.dot(A_star)
+
+        # S_m+1=-A_(m+1,B)*S*
+        S_star = self.tableau[:-2,len(self.variables):-2]
+        self.tableau[-2][len(self.variables):-2] = -A_m1B.dot(S_star)
+
+        # b_m+1 = b_m+1-A_(m+1,B)b*
+        b_star = self.tableau[:-2,-1]
+        self.tableau[-2][-1] -= A_m1B.dot(b_star)
+
+        self.redef_matrix_bs_obj()
+
+        # check if b is negative
+        self.row_to_var = np.append(self.row_to_var, self.tableau.shape[1]-2)
+        if self.tableau[-2][-1] >= 0:
+            return
+
+        # Dual pivot
+        while np.any(self.bs < 0):
+            row = np.argmin(self.bs)
+            a_m1 = np.copy(self.tableau[row, :-1])
+            a_m1[a_m1 >= 0] = 0
+            if np.any(a_m1 < 0):
+                quot = np.argmin(np.abs(divInf(self.obj[:-1], a_m1)))
+                self.gauss_step(row, quot)
+            else:
+                raise InfeasibleError("The model is infeasible")
+
+        solved, _ = self.pivot()
+        while not solved:
+            solved, _ = self.pivot()
+            self.steps += 1
+
+
+
 
     def redef_matrix_bs_obj(self):
         self.matrix = self.tableau[:-1]
@@ -148,8 +216,6 @@ class Model:
         min_not_in_basis[self.row_to_var] = 0 # non negative
         c = np.argmin(min_not_in_basis)
         get_l_e = time() - get_l_e
-
-
         if self.obj[c] < 0:
             positive = np.where(self.matrix[:,c] > 0)[0]
             if len(positive):
@@ -174,7 +240,7 @@ class Model:
 
         return False, get_l_e
 
-    def gauss_step(self, leaving_row, entering):
+    def gauss_step(self, leaving_row, entering, dual=False):
         # get the new objective function
         fac = -self.tableau[-1, entering] / self.matrix[leaving_row, entering]
         self.tableau[-1] = fac * self.matrix[leaving_row] + self.tableau[-1]
@@ -187,9 +253,15 @@ class Model:
 
         self.matrix[leaving_row] /= self.matrix[leaving_row, entering]
 
+        self.tableau[:,entering] = 0
+        self.tableau[leaving_row,entering] = 1
+
         # change basis variables
-        leaving = self.row_to_var[leaving_row]
-        self.new_basis(entering, leaving)
+        if not dual:
+            leaving = self.row_to_var[leaving_row]
+            self.new_basis(entering, leaving)
+        else:
+            self.new_basis(entering, leaving_row)
 
     def check_if_dual(self):
         if self.DUAL:
@@ -240,7 +312,11 @@ class Model:
 
         return sol_row
 
-    def solve(self):
+
+    def solve(self, consider_dual=None):
+        if consider_dual is None:
+            consider_dual = self.TEST_DUAL
+
         self.tableau = np.zeros((len(self.constraints)+1,len(self.variables)+1))
 
         if self.p['information']:
@@ -268,8 +344,11 @@ class Model:
         # set obj
         self.tableau[-1,:] = np.append(np.array(self.obj_coefficients), np.zeros((1,1)))
 
-        self.check_if_dual()
-        if self.DUAL:
+        if consider_dual == self.TEST_DUAL:
+            self.check_if_dual()
+        if self.DUAL or consider_dual == self.DEF_DUAL:
+            if self.p['information']:
+                print("Using dual")
             self.to_dual()
 
         self.tableau[-1, :] = -self.tableau[-1,:]
@@ -300,6 +379,13 @@ class Model:
 
         if self.p['end_conf']:
             print("End tableau")
-            print(np.around(self.tableau, decimals=1))
+            print(np.around(self.tableau, decimals=4))
             print("Steps: ", self.steps)
 
+
+def divInf(a, b):
+    """ ignore / 0, div0( [-1, 0, 1], 0 ) -> [0, 0, 0] """
+    with np.errstate(divide='ignore', invalid='ignore'):
+        c = np.true_divide(a, b)
+        c[np.isnan(c)] = np.inf
+    return c

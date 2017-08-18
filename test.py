@@ -3,7 +3,46 @@ from inspect import ismethod
 from Model.model import Model
 import numpy as np
 from Model.error import *
+import random, string
 
+
+def get_keys(obj):
+    keys = []
+    for ing in obj:
+        keys.append(ing)
+    return keys
+
+
+def get_by_key(obj, key, key_list=False):
+    arr = []
+    if key_list:
+        for ing in key_list:
+            arr.append(obj[ing][key])
+    else:
+        for ing in obj:
+            arr.append(obj[ing][key])
+    return np.array(arr)
+
+def fill_MIN_REQ(n):
+    MIN_REQ = {}
+    for j in range(n):
+        nut = "".join([random.choice(string.ascii_letters) for d in range(10)])
+        MIN_REQ[nut] = random.randint(50, 2000)
+    return MIN_REQ
+
+def fill_ING(MIN_REQ,n,vals=False):
+    if vals is False:
+        vals = {'max': 4}
+    ingredients = {}
+    for i in range(n):
+        ing = "".join([random.choice(string.ascii_letters) for d in range(15)])
+        ingredients[ing] = {}
+        for nut in MIN_REQ:
+            nut_val = random.randint(MIN_REQ[nut] // 100, MIN_REQ[nut] // 10)
+            ingredients[ing][nut] = nut_val
+        ingredients[ing]["price"] = random.randint(15, 90)
+        ingredients[ing]["max"] = random.randint(1, vals['max'])
+    return ingredients
 
 class MyTest(unittest.TestCase):
     def test_maximize_2v_4c_1o(self):
@@ -114,7 +153,7 @@ class MyTest(unittest.TestCase):
             self.fail("Should raise Unbounded but didn't")
 
     def test_diet(self):
-        m = Model(print_obj={})
+        m = Model()
 
         a = m.add_var("real+", name="oat")
         b = m.add_var("real+", name="chicken")
@@ -152,6 +191,101 @@ class MyTest(unittest.TestCase):
         for x_idx in range(len(real_sol)):
             self.assertAlmostEqual(computed_solution[x_idx], real_sol[x_idx])
 
+    def test_diet_100n_2000i(self):
+        random.seed(9001)
+
+        from Model.model import Model
+
+        m = Model(print_obj={
+            'timing': True
+        })
+
+        MIN_REQ = fill_MIN_REQ(100)
+        ingredients = fill_ING(MIN_REQ,2000, {'max': 4})
+
+        list_of_ingredients = get_keys(ingredients)
+
+        x = []
+        for ing in list_of_ingredients:
+            x.append(m.add_var("real+", name=ing, ub=ingredients[ing]["max"]))
+        x = np.array(x)
+
+        m.minimize(sum(get_by_key(ingredients, "price", list_of_ingredients) * x))
+
+        for cst in MIN_REQ:
+            left = get_by_key(ingredients, cst, list_of_ingredients)
+            m.add_constraint(sum(left * x) >= MIN_REQ[cst])
+
+
+        m.solve(consider_dual=0)
+
+        sol_obj = m.get_solution_object()
+
+        solved = False
+        while not solved:
+            solved = True
+            i = 0
+            for ing in list_of_ingredients:
+                if sol_obj[i] > ingredients[ing]['max']:
+                    solved = False
+                    m.add_lazy_constraint(x[i] <= ingredients[ing]['max'])
+                    sol_obj = m.get_solution_object()
+                    break
+                i += 1
+
+        computed_solution = m.get_solution_object()
+        real_sol = np.load('test_obj/diet_100n_2000i.npy')
+        for x_idx in range(len(real_sol)):
+            self.assertAlmostEqual(computed_solution[x_idx], real_sol[x_idx])
+
+    def test_diet_10n_10i(self):
+        random.seed(9001)
+
+        from Model.model import Model
+
+        m = Model(print_obj={
+            'timing': True
+        })
+
+
+        MIN_REQ = fill_MIN_REQ(10)
+        ingredients = fill_ING(MIN_REQ,10, {'max': 3})
+
+
+        list_of_ingredients = get_keys(ingredients)
+
+        x = []
+        for ing in list_of_ingredients:
+            x.append(m.add_var("real+", name=ing, ub=ingredients[ing]["max"]))
+        x = np.array(x)
+
+        m.minimize(sum(get_by_key(ingredients, "price", list_of_ingredients) * x))
+
+        for cst in MIN_REQ:
+            left = get_by_key(ingredients, cst, list_of_ingredients)
+            m.add_constraint(sum(left * x) >= MIN_REQ[cst])
+
+
+        m.solve(consider_dual=0)
+
+        sol_obj = m.get_solution_object()
+
+        try:
+            solved = False
+            while not solved:
+                solved = True
+                i = 0
+                for ing in list_of_ingredients:
+                    if sol_obj[i] > ingredients[ing]['max']:
+                        solved = False
+                        m.add_lazy_constraint(x[i] <= ingredients[ing]['max'])
+                        sol_obj = m.get_solution_object()
+                        break
+                    i += 1
+        except InfeasibleError as e:
+            pass
+        else:
+            self.fail("Should raise InfeasibleError but didn't")
 
 if __name__ == '__main__':
     unittest.main()

@@ -5,6 +5,7 @@ import random, string
 from Model.model import Model
 
 m = Model(print_obj={
+   'start_conf': True,
    'end_conf': True
 })
 
@@ -88,14 +89,40 @@ for cst in MIN_REQ:
     left = get_by_key(ingredients,cst, list_of_ingredients)
     m.add_constraint(sum(left*x) >= MIN_REQ[cst])
 
-i = 0
-for ing in list_of_ingredients:
-    m.add_constraint(x[i] <= ingredients[ing]['max'])
-    i += 1
+
 print("all added")
 
 t0 = time()
-m.solve()
-print("Solved in %f" % (time()-t0))
+# use primal method
+m.solve(consider_dual=0)
+print("Solved first in %f" % (time()-t0))
 
 m.print_solution(slack=False)
+
+i = 0
+for ing in list_of_ingredients:
+    m.add_lazy_constraint(x[i] <= ingredients[ing]['max'])
+    i += 1
+
+print("Solved total in %f" % (time()-t0))
+
+print("End tableau")
+print(np.around(m.tableau, decimals=4))
+print("Steps: ", m.steps)
+
+m.print_solution(slack=False)
+
+"""
+i = 0
+for ing in list_of_ingredients:
+    col = np.zeros(m.tableau.shape[0])
+    col[i] = 1
+    col[-1] = -ingredients[ing]['max']
+
+    m.tableau = np.c_[m.tableau[:, :-1], col, m.tableau[:, -1]]
+    i += 1
+print(m.tableau)
+m.solve_updated()
+m.print_solution(slack=False)
+"""
+

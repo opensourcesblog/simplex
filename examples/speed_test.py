@@ -6,7 +6,6 @@ random.seed(9001)
 from Model.model import Model
 
 m = Model(print_obj={
-    'information': True,
     'timing': True
 })
 
@@ -94,11 +93,11 @@ MIN_REQ = {
 MIN_REQ = {}
 
 ingredients = {}
-for j in range(1200):
+for j in range(500):
     nut = "".join([random.choice(string.ascii_letters) for d in range(10)])
     MIN_REQ[nut] = random.randint(50,2000)
 
-for i in range(100):
+for i in range(5000):
     ing = "".join( [random.choice(string.ascii_letters) for d in range(15)] )
     ingredients[ing] = {}
     for nut in MIN_REQ:
@@ -108,6 +107,7 @@ for i in range(100):
     ingredients[ing]["max"] = random.randint(1,3)
 
 list_of_ingredients = get_keys(ingredients)
+print("loi", np.sort(list_of_ingredients)[:10])
 
 x = []
 for ing in list_of_ingredients:
@@ -119,18 +119,47 @@ m.minimize(sum(get_by_key(ingredients,"price", list_of_ingredients)*x))
 for cst in MIN_REQ:
     left = get_by_key(ingredients,cst, list_of_ingredients)
     m.add_constraint(sum(left*x) >= MIN_REQ[cst])
-
 """
 i = 0
 for ing in list_of_ingredients:
     m.add_constraint(x[i] <= ingredients[ing]['max'])
     i += 1
 """
+
 print("all added")
 
 t0 = time()
-m.solve()
-print("Solved in %f" % (time()-t0))
+m.solve(consider_dual=0)
+print("Solved first in %f" % (time()-t0))
 
 m.print_solution(slack=False)
 print("Steps: ",m.steps)
+# exit(1)
+
+sol_obj = m.get_solution_object()
+
+solved = False
+while not solved:
+    solved = True
+    i = 0
+    for ing in list_of_ingredients:
+        if sol_obj[i] > ingredients[ing]['max']:
+            print("add lazy")
+            solved = False
+            m.add_lazy_constraint(x[i] <= ingredients[ing]['max'])
+            sol_obj = m.get_solution_object()
+            break
+        i += 1
+
+# for ing in list_of_ingredients:
+#     print("%s <= %d" % (ing,ingredients[ing]['max']))
+
+print("Solved total in %f" % (time()-t0))
+
+# print("End tableau")
+# print(np.around(m.tableau, decimals=4))
+print("Steps: ", m.steps)
+
+m.print_solution(slack=False)
+print(m.get_solution_object())
+np.save('test_obj/diet_100n_2000i', m.get_solution_object())
