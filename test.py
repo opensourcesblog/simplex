@@ -4,14 +4,15 @@ from Model.model import Model
 import numpy as np
 from Model.error import *
 import random, string
+import pickle
 
+def save_obj(obj, name ):
+    with open('test_obj/'+ name + '.pkl', 'wb') as f:
+        pickle.dump(obj, f, pickle.HIGHEST_PROTOCOL)
 
-def get_keys(obj):
-    keys = []
-    for ing in obj:
-        keys.append(ing)
-    return keys
-
+def load_obj(name ):
+    with open('test_obj/' + name + '.pkl', 'rb') as f:
+        return pickle.load(f)
 
 def get_by_key(obj, key, key_list=False):
     arr = []
@@ -22,29 +23,6 @@ def get_by_key(obj, key, key_list=False):
         for ing in obj:
             arr.append(obj[ing][key])
     return np.array(arr)
-
-def fill_MIN_REQ(n):
-    MIN_REQ = {}
-    for j in range(n):
-        nut = "".join([random.choice(string.ascii_letters) for d in range(10)])
-        MIN_REQ[nut] = random.randint(50, 2000)
-    return MIN_REQ
-
-def fill_ING(MIN_REQ,n,vals=False):
-    if vals is False:
-        vals = {'max': 4}
-    ingredients = {}
-    list_of_ingredients = []
-    for i in range(n):
-        ing = "".join([random.choice(string.ascii_letters) for d in range(15)])
-        ingredients[ing] = {}
-        for nut in MIN_REQ:
-            nut_val = random.randint(MIN_REQ[nut] // 100, MIN_REQ[nut] // 10)
-            ingredients[ing][nut] = nut_val
-        ingredients[ing]["price"] = random.randint(15, 90)
-        ingredients[ing]["max"] = random.randint(1, vals['max'])
-        list_of_ingredients.append(ing)
-    return ingredients, list_of_ingredients
 
 class MyTest(unittest.TestCase):
     def test_maximize_2v_4c_1o(self):
@@ -194,17 +172,14 @@ class MyTest(unittest.TestCase):
             self.assertAlmostEqual(computed_solution[x_idx], real_sol[x_idx])
 
     def test_diet_100n_2000i(self):
-        random.seed(9001)
-
         from Model.model import Model
 
         m = Model(print_obj={
             'timing': True
         })
 
-        MIN_REQ = fill_MIN_REQ(100)
-        ingredients, list_of_ingredients = fill_ING(MIN_REQ,2000, {'max': 4})
-
+        MIN_REQ = load_obj('diet_100n_min_req')
+        ingredients, list_of_ingredients = load_obj('diet_100n_2000i_ing'), load_obj('diet_100n_2000i_l_o_ing')
 
         x = []
         for ing in list_of_ingredients:
@@ -240,8 +215,6 @@ class MyTest(unittest.TestCase):
             self.assertAlmostEqual(computed_solution[x_idx], real_sol[x_idx])
 
     def test_diet_10n_10i(self):
-        random.seed(9001)
-
         from Model.model import Model
 
         m = Model(print_obj={
@@ -249,9 +222,8 @@ class MyTest(unittest.TestCase):
         })
 
 
-        MIN_REQ = fill_MIN_REQ(10)
-        ingredients, list_of_ingredients = fill_ING(MIN_REQ,10, {'max': 3})
-
+        MIN_REQ = load_obj('diet_10n_min_req')
+        ingredients, list_of_ingredients = load_obj('diet_10n_10i_ing'), load_obj('diet_10n_10i_l_o_ing')
 
         x = []
         for ing in list_of_ingredients:
