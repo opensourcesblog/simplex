@@ -174,9 +174,7 @@ class MyTest(unittest.TestCase):
     def test_diet_100n_2000i(self):
         from Model.model import Model
 
-        m = Model(print_obj={
-            'timing': True
-        })
+        m = Model()
 
         MIN_REQ = load_obj('diet_100n_min_req')
         ingredients, list_of_ingredients = load_obj('diet_100n_2000i_ing'), load_obj('diet_100n_2000i_l_o_ing')
@@ -217,9 +215,7 @@ class MyTest(unittest.TestCase):
     def test_diet_10n_10i(self):
         from Model.model import Model
 
-        m = Model(print_obj={
-            'timing': True
-        })
+        m = Model()
 
 
         MIN_REQ = load_obj('diet_10n_min_req')
@@ -257,6 +253,179 @@ class MyTest(unittest.TestCase):
             pass
         else:
             self.fail("Should raise InfeasibleError but didn't")
+
+    def test_woody_max_add_variable(self):
+        m = Model()
+
+        x1 = m.add_var("real+", name="a")
+        x2 = m.add_var("real+", name="b")
+        x3 = m.add_var("real+", name="c")
+
+        m.maximize(35 * x1 + 60 * x2 + 75 * x3)
+
+        m.add_constraint(8 * x1 + 12 * x2 + 16 * x3 <= 120)
+        m.add_constraint(15 * x2 + 20 * x3 <= 60)
+        m.add_constraint(3*x1+6*x2+9*x3 <= 48)
+
+        m.solve(consider_dual=0)
+        m.add_new_variable([12,30,10],175)
+
+        computed_solution = m.get_solution_object()
+        real_sol = [9.3333333333333321, 0, 0, 2.0, 676.66666666666663]
+        for x_idx in range(len(real_sol)):
+            self.assertAlmostEqual(computed_solution[x_idx], real_sol[x_idx])
+
+    def test_woody_min_add_variable(self):
+        m = Model()
+
+        x1 = m.add_var("real+", name="a")
+        x2 = m.add_var("real+", name="b")
+        x3 = m.add_var("real+", name="c")
+
+        m.minimize(35 * x1 + 60 * x2 + 75 * x3)
+
+        m.add_constraint(8 * x1 + 12 * x2 + 16 * x3 >= 120)
+        m.add_constraint(15 * x2 + 20 * x3 >= 60)
+        m.add_constraint(3*x1+6*x2+9*x3 >= 48)
+
+        m.solve(consider_dual=0)
+        m.add_new_variable([12,30,10],15)
+
+        computed_solution = m.get_solution_object()
+        real_sol = [0, 0, 0, 10, 150]
+        for x_idx in range(len(real_sol)):
+            self.assertAlmostEqual(computed_solution[x_idx], real_sol[x_idx])
+
+    def test_woody_max_lazy_constraint(self):
+        m = Model()
+
+        x1 = m.add_var("real+", name="a")
+        x2 = m.add_var("real+", name="b")
+        x3 = m.add_var("real+", name="c")
+
+        m.maximize(35 * x1 + 60 * x2 + 75 * x3)
+
+        m.add_constraint(8 * x1 + 12 * x2 + 16 * x3 <= 120)
+        m.add_constraint(15 * x2 + 20 * x3 <= 60)
+        m.add_constraint(3*x1+6*x2+9*x3 <= 48)
+
+        m.solve(consider_dual=0)
+        m.add_lazy_constraint(x1 <= 5)
+        m.add_lazy_constraint(x3 >= 1)
+
+        computed_solution = m.get_solution_object()
+        real_sol = [5.0, 2.6666666666666665, 1.0, 410]
+        for x_idx in range(len(real_sol)):
+            self.assertAlmostEqual(computed_solution[x_idx], real_sol[x_idx])
+
+    def test_woody_min_lazy_constraint(self):
+        m = Model()
+
+        x1 = m.add_var("real+", name="a")
+        x2 = m.add_var("real+", name="b")
+        x3 = m.add_var("real+", name="c")
+
+        m.minimize(35 * x1 + 60 * x2 + 75 * x3)
+
+        m.add_constraint(8 * x1 + 12 * x2 + 16 * x3 >= 120)
+        m.add_constraint(15 * x2 + 20 * x3 >= 60)
+        m.add_constraint(3*x1+6*x2+9*x3 >= 48)
+
+        m.solve(consider_dual=0)
+        m.add_lazy_constraint(x1 <= 5)
+        m.add_lazy_constraint(x3 >= 1)
+
+        computed_solution = m.get_solution_object()
+        real_sol = [5.0, 0, 5.0, 550]
+        for x_idx in range(len(real_sol)):
+            self.assertAlmostEqual(computed_solution[x_idx], real_sol[x_idx])
+
+    def test_woody_min_dual_add_variable(self):
+        m = Model()
+
+        x1 = m.add_var("real+", name="a")
+        x2 = m.add_var("real+", name="b")
+        x3 = m.add_var("real+", name="c")
+
+        m.minimize(35 * x1 + 60 * x2 + 75 * x3)
+
+        m.add_constraint(8 * x1 + 12 * x2 + 16 * x3 >= 120)
+        m.add_constraint(15 * x2 + 20 * x3 >= 60)
+        m.add_constraint(3 * x1 + 6 * x2 + 9 * x3 >= 48)
+
+        m.solve(consider_dual=2)
+        m.print_solution()
+        m.add_new_variable([12, 30, 10], 15)
+
+        computed_solution = m.get_solution_object()
+        real_sol = [0, 0, 0, 10, 150]
+        for x_idx in range(len(real_sol)):
+            self.assertAlmostEqual(computed_solution[x_idx], real_sol[x_idx])
+
+    def test_woody_max_dual_add_variable(self):
+        m = Model()
+
+        x1 = m.add_var("real+", name="a")
+        x2 = m.add_var("real+", name="b")
+        x3 = m.add_var("real+", name="c")
+
+        m.maximize(35 * x1 + 60 * x2 + 75 * x3)
+
+        m.add_constraint(8 * x1 + 12 * x2 + 16 * x3 <= 120)
+        m.add_constraint(15 * x2 + 20 * x3 <= 60)
+        m.add_constraint(3*x1+6*x2+9*x3 <= 48)
+
+        m.solve(consider_dual=2)
+        m.add_new_variable([12,30,10],175)
+
+        computed_solution = m.get_solution_object()
+        real_sol = [9.3333333333333321, 0, 0, 2.0, 676.66666666666663]
+        for x_idx in range(len(real_sol)):
+            self.assertAlmostEqual(computed_solution[x_idx], real_sol[x_idx])
+
+    def test_woody_max_dual_lazy_constraint(self):
+        m = Model()
+
+        x1 = m.add_var("real+", name="a")
+        x2 = m.add_var("real+", name="b")
+        x3 = m.add_var("real+", name="c")
+
+        m.maximize(35 * x1 + 60 * x2 + 75 * x3)
+
+        m.add_constraint(8 * x1 + 12 * x2 + 16 * x3 <= 120)
+        m.add_constraint(15 * x2 + 20 * x3 <= 60)
+        m.add_constraint(3 * x1 + 6 * x2 + 9 * x3 <= 48)
+
+        m.solve(consider_dual=2)
+        m.add_lazy_constraint(x1 <= 5)
+        m.add_lazy_constraint(x3 >= 1)
+
+        computed_solution = m.get_solution_object()
+        real_sol = [5.0, 2.6666666666666665, 1.0, 410]
+        for x_idx in range(len(real_sol)):
+            self.assertAlmostEqual(computed_solution[x_idx], real_sol[x_idx])
+
+    def test_woody_min_dual_lazy_constraint(self):
+        m = Model()
+
+        x1 = m.add_var("real+", name="a")
+        x2 = m.add_var("real+", name="b")
+        x3 = m.add_var("real+", name="c")
+
+        m.minimize(35 * x1 + 60 * x2 + 75 * x3)
+
+        m.add_constraint(8 * x1 + 12 * x2 + 16 * x3 >= 120)
+        m.add_constraint(15 * x2 + 20 * x3 >= 60)
+        m.add_constraint(3 * x1 + 6 * x2 + 9 * x3 >= 48)
+
+        m.solve(consider_dual=2)
+        m.add_lazy_constraint(x1 <= 5)
+        m.add_lazy_constraint(x3 >= 1)
+
+        computed_solution = m.get_solution_object()
+        real_sol = [5.0, 0, 5.0, 550]
+        for x_idx in range(len(real_sol)):
+            self.assertAlmostEqual(computed_solution[x_idx], real_sol[x_idx])
 
 if __name__ == '__main__':
     unittest.main()

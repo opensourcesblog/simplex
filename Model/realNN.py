@@ -21,6 +21,9 @@ class RealNN:
     def __le__(self, other):
         return Constraint(self, "<=", other)
 
+    def __ge__(self, other):
+        return Constraint(self, ">=", other)
+
     def __add__(self, other):
         if self.value is not None and other.value is not None:
             return RealNN(value=self.factor*self.value+other.factor*other.value)

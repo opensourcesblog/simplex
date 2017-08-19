@@ -93,8 +93,8 @@ for cst in MIN_REQ:
 print("all added")
 
 t0 = time()
-# use primal method
-m.solve(consider_dual=0)
+# use dual method
+m.solve(consider_dual=2)
 print("Solved first in %f" % (time()-t0))
 
 m.print_solution(slack=False)
@@ -112,17 +112,4 @@ print("Steps: ", m.steps)
 
 m.print_solution(slack=False)
 
-"""
-i = 0
-for ing in list_of_ingredients:
-    col = np.zeros(m.tableau.shape[0])
-    col[i] = 1
-    col[-1] = -ingredients[ing]['max']
-
-    m.tableau = np.c_[m.tableau[:, :-1], col, m.tableau[:, -1]]
-    i += 1
-print(m.tableau)
-m.solve_updated()
-m.print_solution(slack=False)
-"""
 

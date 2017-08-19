@@ -56,27 +56,58 @@ class Model:
     def add_constraint(self,constraint):
         self.constraints.append(constraint)
 
-    def add_lazy_constraint(self, constraint):
-        if self.DUAL:
-            print("Can't use add_lazy_constraint in dual mode atm")
-            exit(1)
+    def add_new_col(self, col, obj):
+        zeros = [0] * (self.tableau.shape[0] - 1 - len(col))
+        new_variable_line = np.concatenate((col, zeros, [obj]))
+        self.tableau = np.c_[
+            self.tableau[:, :self.nof_var_cols], new_variable_line, self.tableau[:, self.nof_var_cols:]]
+        self.redef_matrix_bs_obj()
 
-        self.constraints.append(constraint)
+        self.row_to_var[self.row_to_var >= self.nof_var_cols] += 1
+        self.nof_var_cols += 1
+
+        # Update: c* = c-y*A
+        y_star = self.tableau[-1, self.nof_var_cols:-1]
+        A = self.tableau[:-1, self.nof_var_cols - 1, np.newaxis]
+        self.tableau[-1, self.nof_var_cols - 1] = self.tableau[-1, self.nof_var_cols - 1] - y_star.dot(A)
+        self.tableau[-1, self.nof_var_cols - 1] *= -1
+
+        # Update: A*=S*A
+        A = self.tableau[:-1, self.nof_var_cols - 1, np.newaxis]
+        S_startA = self.tableau[:-1, self.nof_var_cols:-1].dot(A)
+        self.tableau[:-1, self.nof_var_cols - 1] = S_startA.reshape(self.tableau.shape[0] - 1)
+
+        solved, _ = self.pivot()
+        while not solved:
+            solved, _ = self.pivot()
+            self.steps += 1
+
+    def add_new_variable(self, col, obj, name="NA", value=None):
+        x = RealNN(name, value, index=len(self.variables))
+        self.variables.append({"x": x})
+        if self.DUAL:
+            zeros = [0] * (self.tableau.shape[1] - 1 - self.nof_var_cols)
+            new_row = np.array(col + zeros + [obj])
+            if self.obj_type == self.MINIMIZE:
+                new_row *= -1
+            new_row = new_row[np.newaxis, :]
+            self.add_new_row(new_row)
+        else:
+            if self.obj_type == self.MINIMIZE:
+                self.add_new_col(-np.array(col), -obj)
+            else:
+                self.add_new_col(col,obj)
+
+
+    def add_new_row(self, new_row):
+        self.tableau = np.r_[self.tableau[:-1], new_row, self.tableau[-1, np.newaxis]]
 
         # adjusting the matrix
-        # add constraint to matrix
-        coefficients = constraint.x.get_coefficients(len(self.variables))
-        zeros = [0]*(self.tableau.shape[1]-1-len(self.variables))
-        new_constraint_line = np.array(coefficients + zeros + [constraint.y])
-        if constraint.type != "<=":
-            new_constraint_line *= -1
-        new_constraint_line = new_constraint_line[np.newaxis, :]
-        self.tableau = np.r_[self.tableau[:-1], new_constraint_line, self.tableau[-1, np.newaxis]]
-
         # add slack variable
         one_slack = np.zeros((self.tableau.shape[0],1))
         one_slack[-2] = 1
         self.tableau = np.c_[self.tableau[:,:-1], one_slack, self.tableau[:,-1][:,np.newaxis]]
+        self.redef_matrix_bs_obj()
 
         # A_m+1=A_m+1-A_(m+1,B)*A*
         A = self.tableau[:-1]
@@ -93,7 +124,6 @@ class Model:
         b_star = self.tableau[:-2,-1]
         self.tableau[-2][-1] -= A_m1B.dot(b_star)
 
-        self.redef_matrix_bs_obj()
 
         # check if b is negative
         self.row_to_var = np.append(self.row_to_var, self.tableau.shape[1]-2)
@@ -116,8 +146,23 @@ class Model:
             solved, _ = self.pivot()
             self.steps += 1
 
-
-
+    def add_lazy_constraint(self, constraint):
+        self.constraints.append(constraint)
+        if self.DUAL:
+            # add constraint as new variable
+            coefficients = np.array(constraint.x.get_coefficients(len(self.variables)))
+            if constraint.type != ">=":
+                coefficients *= -1
+                constraint.y *= -1
+            self.add_new_col(coefficients, constraint.y)
+        else:
+            coefficients = constraint.x.get_coefficients(len(self.variables))
+            zeros = [0] * (self.tableau.shape[1] - 1 - len(self.variables))
+            new_constraint_line = np.array(coefficients + zeros + [constraint.y])
+            if constraint.type != "<=":
+                new_constraint_line *= -1
+            new_constraint_line = new_constraint_line[np.newaxis, :]
+            self.add_new_row(new_constraint_line)
 
     def redef_matrix_bs_obj(self):
         self.matrix = self.tableau[:-1]
@@ -140,11 +185,12 @@ class Model:
             # add x_0 variable
             ones = np.ones(self.matrix.shape[0]+1)
             self.tableau = np.c_[self.tableau[:, :-1], -ones, self.tableau[:, -1]]
+            self.redef_matrix_bs_obj()
 
             # and change obj to max -x_0
             self.tableau[-1,:] = np.zeros(self.tableau.shape[1])
             self.tableau[-1,-2] = 1
-            self.redef_matrix_bs_obj()
+
 
             self.find_bfs()
             # get biggest b
@@ -159,10 +205,11 @@ class Model:
             if self.obj[-1] == 0:
                 # remove the x_0 column
                 self.tableau = np.c_[self.tableau[:,:self.nof_var_cols],self.tableau[:,self.nof_var_cols+1:]]
+                self.redef_matrix_bs_obj()
+
                 # update self.row_to_var
                 self.row_to_var[self.row_to_var > self.nof_var_cols] -= 1
 
-                self.redef_matrix_bs_obj()
                 rows = np.where(self.row_to_var < self.nof_var_cols)[0]
                 vs = []
                 for row in rows:
@@ -189,8 +236,6 @@ class Model:
         identity = np.eye(self.matrix.shape[0])
         identity = np.r_[identity, np.zeros((1,self.matrix.shape[0]))]
         self.tableau = np.c_[self.tableau[:,:-1], identity, self.tableau[:,-1]]
-
-
         self.redef_matrix_bs_obj()
 
         # range not including the b column
@@ -347,10 +392,11 @@ class Model:
 
         # set obj
         self.tableau[-1,:] = np.append(np.array(self.obj_coefficients), np.zeros((1,1)))
-
+        if consider_dual == self.DEF_DUAL:
+            self.DUAL = True
         if consider_dual == self.TEST_DUAL:
             self.check_if_dual()
-        if self.DUAL or consider_dual == self.DEF_DUAL:
+        if self.DUAL:
             if self.p['information']:
                 print("Using dual")
             self.to_dual()
@@ -388,7 +434,7 @@ class Model:
 
 
 def divInf(a, b):
-    """ ignore / 0, div0( [-1, 0, 1], 0 ) -> [0, 0, 0] """
+    """ ignore / 0, div0( [-1, 0, 1], 0 ) -> [Inf, Inf, Inf] """
     with np.errstate(divide='ignore', invalid='ignore'):
         c = np.true_divide(a, b)
         c[np.isnan(c)] = np.inf
