@@ -25,7 +25,7 @@ m.add_constraint(3 * x1 + 6 * x2 + 9 * x3 + 15 * x4 <= 48)
 
 m.solve(consider_dual=0)
 m.print_solution()
-print(m.tableau)
+print(m.t.tableau)
 m.add_new_variable([12, 30, 10], 15)
 
 m.print_solution()

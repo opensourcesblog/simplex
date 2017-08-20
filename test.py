@@ -259,19 +259,18 @@ class MyTest(unittest.TestCase):
 
         x1 = m.add_var("real+", name="a")
         x2 = m.add_var("real+", name="b")
-        x3 = m.add_var("real+", name="c")
 
-        m.maximize(35 * x1 + 60 * x2 + 75 * x3)
+        m.maximize(35 * x1 + 60 * x2)
 
-        m.add_constraint(8 * x1 + 12 * x2 + 16 * x3 <= 120)
-        m.add_constraint(15 * x2 + 20 * x3 <= 60)
-        m.add_constraint(3*x1+6*x2+9*x3 <= 48)
+        m.add_constraint(8 * x1 + 12 * x2 <= 120)
+        m.add_constraint(15 * x2 <= 60)
+        m.add_constraint(3*x1+6*x2 <= 48)
 
         m.solve(consider_dual=0)
-        m.add_new_variable([12,30,10],175)
+        m.add_new_variable([16,20,9],75)
 
         computed_solution = m.get_solution_object()
-        real_sol = [9.3333333333333321, 0, 0, 2.0, 676.66666666666663]
+        real_sol = [12.0, 1.9999999999999996, 0, 540.0]
         for x_idx in range(len(real_sol)):
             self.assertAlmostEqual(computed_solution[x_idx], real_sol[x_idx])
 
@@ -280,19 +279,19 @@ class MyTest(unittest.TestCase):
 
         x1 = m.add_var("real+", name="a")
         x2 = m.add_var("real+", name="b")
-        x3 = m.add_var("real+", name="c")
 
-        m.minimize(35 * x1 + 60 * x2 + 75 * x3)
+        m.minimize(35 * x1 + 60 * x2)
 
-        m.add_constraint(8 * x1 + 12 * x2 + 16 * x3 >= 120)
-        m.add_constraint(15 * x2 + 20 * x3 >= 60)
-        m.add_constraint(3*x1+6*x2+9*x3 >= 48)
+        m.add_constraint(8 * x1 + 12 * x2 >= 120)
+        m.add_constraint(15 * x2 >= 60)
+        m.add_constraint(3*x1+6*x2 >= 48)
 
         m.solve(consider_dual=0)
-        m.add_new_variable([12,30,10],15)
+        m.add_new_variable([16,20,9],75)
 
         computed_solution = m.get_solution_object()
-        real_sol = [0, 0, 0, 10, 150]
+        print(m.get_solution_object())
+        real_sol = [9, 0, 3,540]
         for x_idx in range(len(real_sol)):
             self.assertAlmostEqual(computed_solution[x_idx], real_sol[x_idx])
 
@@ -345,20 +344,19 @@ class MyTest(unittest.TestCase):
 
         x1 = m.add_var("real+", name="a")
         x2 = m.add_var("real+", name="b")
-        x3 = m.add_var("real+", name="c")
 
-        m.minimize(35 * x1 + 60 * x2 + 75 * x3)
+        m.minimize(35 * x1 + 60 * x2)
 
-        m.add_constraint(8 * x1 + 12 * x2 + 16 * x3 >= 120)
-        m.add_constraint(15 * x2 + 20 * x3 >= 60)
-        m.add_constraint(3 * x1 + 6 * x2 + 9 * x3 >= 48)
+        m.add_constraint(8 * x1 + 12 * x2 >= 120)
+        m.add_constraint(15 * x2 >= 60)
+        m.add_constraint(3 * x1 + 6 * x2 >= 48)
 
         m.solve(consider_dual=2)
-        m.print_solution()
-        m.add_new_variable([12, 30, 10], 15)
+        m.add_new_variable([16, 20, 9], 75)
 
         computed_solution = m.get_solution_object()
-        real_sol = [0, 0, 0, 10, 150]
+        print(m.get_solution_object())
+        real_sol = [9, 0, 3, 540]
         for x_idx in range(len(real_sol)):
             self.assertAlmostEqual(computed_solution[x_idx], real_sol[x_idx])
 
@@ -367,19 +365,18 @@ class MyTest(unittest.TestCase):
 
         x1 = m.add_var("real+", name="a")
         x2 = m.add_var("real+", name="b")
-        x3 = m.add_var("real+", name="c")
 
-        m.maximize(35 * x1 + 60 * x2 + 75 * x3)
+        m.maximize(35 * x1 + 60 * x2)
 
-        m.add_constraint(8 * x1 + 12 * x2 + 16 * x3 <= 120)
-        m.add_constraint(15 * x2 + 20 * x3 <= 60)
-        m.add_constraint(3*x1+6*x2+9*x3 <= 48)
+        m.add_constraint(8 * x1 + 12 * x2 <= 120)
+        m.add_constraint(15 * x2 <= 60)
+        m.add_constraint(3 * x1 + 6 * x2 <= 48)
 
         m.solve(consider_dual=2)
-        m.add_new_variable([12,30,10],175)
+        m.add_new_variable([16, 20, 9], 75)
 
         computed_solution = m.get_solution_object()
-        real_sol = [9.3333333333333321, 0, 0, 2.0, 676.66666666666663]
+        real_sol = [12.0, 1.9999999999999996, 0, 540.0]
         for x_idx in range(len(real_sol)):
             self.assertAlmostEqual(computed_solution[x_idx], real_sol[x_idx])
 
