@@ -1,17 +1,19 @@
 from .constraint import Constraint
 from .error import NonLinear
-from .list_RealNN import List_RealNN
+from .list_Var import List_Var
 
-class RealNN:
-    def __init__(self,name=None,value=None,index=0,factor=1):
+
+class Var:
+    def __init__(self,name=None,value=None,type=None,index=0,factor=1):
         self.name = name
         self.value = value
         self.factor = factor
         self.index = index
+        self.type = type
 
     def __str__(self):
         if self.value is None:
-            return "%s has no value" % self.name
+            return "%s" % self.name
         else:
             return "%s has value %.2f" % (self.name,self.value)
 
@@ -26,9 +28,9 @@ class RealNN:
 
     def __add__(self, other):
         if self.value is not None and other.value is not None:
-            return RealNN(value=self.factor*self.value+other.factor*other.value)
+            return Var(value=self.factor * self.value + other.factor * other.value)
         else:
-            return List_RealNN(self,other)
+            return List_Var(self, other)
 
     def __radd__(self, other):
         if other == 0:
@@ -37,13 +39,13 @@ class RealNN:
             return self.__add__(other)
 
     def __neg__(self):
-        return RealNN(name=self.name,value=self.value,index=self.index,factor=-self.factor)
+        return Var(name=self.name, value=self.value, index=self.index, factor=-self.factor)
 
     def __sub__(self, other):
         if self.value is not None and other.value is not None:
-            return RealNN(value=self.factor*self.value-other.factor*other.value)
+            return Var(value=self.factor * self.value - other.factor * other.value)
         else:
-            return List_RealNN(self,-other)
+            return List_Var(self, -other)
 
     def __rsub__(self, other):
         if other == 0:
@@ -52,8 +54,8 @@ class RealNN:
             return self.__sub__(other)
 
     def __rmul__(self, factor):
-        if isinstance(factor, (int, float, complex)):
-            return RealNN(self.name,self.value,index=self.index,factor=factor)
+        if isinstance(factor, (int, float)):
+            return Var(self.name, self.value, index=self.index, factor=factor)
         else:
             raise NonLinear("factor %s is not linear" % factor)
 
