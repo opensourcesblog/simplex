@@ -1,12 +1,15 @@
 import numpy as np
 from time import time
 import random, string
+from fractions import Fraction
+
 random.seed(9001)
 
 from Model.model import Model
 
 m = Model(print_obj={
-   # 'start_conf': True
+   'start_conf': True,
+   'end_conf': True
 })
 
 x = []
@@ -30,3 +33,4 @@ print("Solved in %f" % (time()-t0))
 
 m.print_solution(slack=False)
 print("Steps: ",m.steps)
+

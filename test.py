@@ -171,7 +171,7 @@ class MyTest(unittest.TestCase):
         m.solve()
 
         computed_solution = m.get_solution_object()
-        real_sol = [4.0, 0, 0, 3.8750000000005276, 1, 2, 662.25000000001796]
+        real_sol = [4.0, 0, 0, 3.875, 1, 2, 662.25]
         for x_idx in range(len(real_sol)):
             self.assertAlmostEqual(computed_solution[x_idx], real_sol[x_idx])
 
@@ -211,48 +211,6 @@ class MyTest(unittest.TestCase):
 
         computed_solution = m.get_solution_object()
         real_sol = [4.0, 0, 0, 4, 1, 2, 671]
-        for x_idx in range(len(real_sol)):
-            self.assertAlmostEqual(computed_solution[x_idx], real_sol[x_idx])
-
-
-    def test_diet_100n_2000i(self):
-        from Model.model import Model
-
-        m = Model()
-
-        MIN_REQ = load_obj('diet_100n_min_req')
-        ingredients, list_of_ingredients = load_obj('diet_100n_2000i_ing'), load_obj('diet_100n_2000i_l_o_ing')
-
-        x = []
-        for ing in list_of_ingredients:
-            x.append(m.add_var("real+", name=ing, ub=ingredients[ing]["max"]))
-        x = np.array(x)
-
-        m.minimize(sum(get_by_key(ingredients, "price", list_of_ingredients) * x))
-
-        for cst in MIN_REQ:
-            left = get_by_key(ingredients, cst, list_of_ingredients)
-            m.add_constraint(sum(left * x) >= MIN_REQ[cst])
-
-
-        m.solve(consider_dual=0)
-
-        sol_obj = m.get_solution_object()
-
-        solved = False
-        while not solved:
-            solved = True
-            i = 0
-            for ing in list_of_ingredients:
-                if sol_obj[i] > ingredients[ing]['max']:
-                    solved = False
-                    m.add_lazy_constraint(x[i] <= ingredients[ing]['max'])
-                    sol_obj = m.get_solution_object()
-                    break
-                i += 1
-
-        computed_solution = m.get_solution_object()
-        real_sol = np.load('test_obj/diet_100n_2000i.npy')
         for x_idx in range(len(real_sol)):
             self.assertAlmostEqual(computed_solution[x_idx], real_sol[x_idx])
 
@@ -314,7 +272,7 @@ class MyTest(unittest.TestCase):
         m.add_new_variable([16,20,9],75)
 
         computed_solution = m.get_solution_object()
-        real_sol = [12.0, 1.9999999999999996, 0, 540.0]
+        real_sol = [12, 2, 0, 540]
         for x_idx in range(len(real_sol)):
             self.assertAlmostEqual(computed_solution[x_idx], real_sol[x_idx])
 
@@ -420,7 +378,7 @@ class MyTest(unittest.TestCase):
         m.add_new_variable([16, 20, 9], 75)
 
         computed_solution = m.get_solution_object()
-        real_sol = [12.0, 1.9999999999999996, 0, 540.0]
+        real_sol = [12, 2, 0, 540]
         for x_idx in range(len(real_sol)):
             self.assertAlmostEqual(computed_solution[x_idx], real_sol[x_idx])
 
@@ -442,7 +400,7 @@ class MyTest(unittest.TestCase):
         m.add_lazy_constraint(x3 >= 1)
 
         computed_solution = m.get_solution_object()
-        real_sol = [5.0, 2.6666666666666665, 1.0, 410]
+        real_sol = [5, 2.6666666666666665, 1, 410]
         for x_idx in range(len(real_sol)):
             self.assertAlmostEqual(computed_solution[x_idx], real_sol[x_idx])
 
@@ -464,12 +422,14 @@ class MyTest(unittest.TestCase):
         m.add_lazy_constraint(x3 >= 1)
 
         computed_solution = m.get_solution_object()
-        real_sol = [5.0, 0, 5.0, 550]
+        real_sol = [5, 0, 5, 550]
         for x_idx in range(len(real_sol)):
             self.assertAlmostEqual(computed_solution[x_idx], real_sol[x_idx])
 
 if __name__ == '__main__':
     unittest.main()
+    # ti = time()
     # t = MyTest()
     # t.test_diet_integer()
+    # print("Time", time()-ti)
     # t.test_woody_min_dual_add_variable()

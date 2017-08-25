@@ -93,21 +93,32 @@ for cst in MIN_REQ:
 print("all added")
 
 t0 = time()
-# use dual method
-m.solve(consider_dual=2)
+
+m.solve(consider_dual=0)
 print("Solved first in %f" % (time()-t0))
 
 m.print_solution(slack=False)
 
-i = 0
-for ing in list_of_ingredients:
-    m.add_lazy_constraint(x[i] <= ingredients[ing]['max'])
-    i += 1
+
+
+sol_obj = m.get_solution_object()
+solved = False
+while not solved:
+    solved = True
+    i = 0
+    for ing in list_of_ingredients:
+        if sol_obj[i] > ingredients[ing]['max']:
+            solved = False
+            m.add_lazy_constraint(x[i] <= ingredients[ing]['max'])
+            exit(1)
+            sol_obj = m.get_solution_object()
+            break
+        i += 1
 
 print("Solved total in %f" % (time()-t0))
 
 print("End tableau")
-print(np.around(m.tableau, decimals=4))
+print(m.t.tableau)
 print("Steps: ", m.steps)
 
 m.print_solution(slack=False)

@@ -114,6 +114,7 @@ class Model:
         one_slack = np.zeros((self.t.tableau.shape[0],1), dtype=np.int)
         one_slack[-2] = 1
         self.t.tableau = np.c_[self.t.tableau[:,:-1], one_slack, self.t.tableau[:,-1][:,np.newaxis]]
+        self.t.tableau[self.t.tableau == 0] = Fraction(0, 1)
 
         # A_m+1=A_m+1-A_(m+1,B)*A*
         A = self.t.matrix
@@ -189,11 +190,14 @@ class Model:
             # and change obj to max -x_0
             self.t.tableau[-1,:] = np.zeros(self.t.tableau.shape[1], dtype=np.int)
             self.t.tableau[-1,-2] = 1
+            self.t.tableau[self.t.tableau == -1] = Fraction(-1,1)
 
             self.find_bfs()
+
             # get biggest b
             row = np.argmin(self.t.bs)
             self.gauss_step(row,self.t.nof_var_cols)
+
             solved, _ = self.pivot()
             while not solved:
                 solved, _ = self.pivot()
@@ -239,6 +243,8 @@ class Model:
             self.t.row_to_var[row] = c
             row += 1
         self.t.row_to_var = np.array(self.t.row_to_var)
+        self.t.tableau[self.t.tableau == 0] = Fraction(0, 1)
+        self.t.tableau[self.t.tableau == 1] = Fraction(1, 1)
 
         if self.p['start_conf']:
             print("Start Tableau:")
@@ -392,6 +398,7 @@ class Model:
         # set obj
         for v_idx in range(len(self.t.obj_coefficients)):
             self.t.tableau[-1][v_idx] = self.t.obj_coefficients[v_idx]
+
         if consider_dual == self.DEF_DUAL:
             self.t.dual = True
         if consider_dual == self.TEST_DUAL:
@@ -403,6 +410,7 @@ class Model:
 
         self.t.tableau[-1, :] = -self.t.tableau[-1,:]
 
+        self.t.tableau[self.t.tableau == 0] = Fraction(0,1)
         self.to_standard()
 
         solved, _ = self.pivot()
@@ -443,8 +451,8 @@ class Model:
 
         if not solved:
             # print("Isn't solved yet")
-            # print(self.get_solution_object())
-            # print("Branch and bound for var %s" % (self.t.variables[max_diff_i]['x'].name))
+            print(self.get_solution_object())
+            print("Branch and bound for var %s" % (self.t.variables[max_diff_i]['x'].name))
             bnb = BnB(bnbbp, self.t, self.t.variables[max_diff_i], sol_arr[max_diff_i],level+1)
             return False
         return True
@@ -461,7 +469,7 @@ class Model:
 
         if self.p['end_conf']:
             print("End tableau")
-            print(np.around(self.t.tableau, decimals=4))
+            print(self.t.tableau)
             print("Steps: ", self.steps)
 
 

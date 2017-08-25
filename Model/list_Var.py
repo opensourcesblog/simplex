@@ -1,6 +1,7 @@
 from .constraint import Constraint
 from .error import NonLinear
 import  numpy as np
+from fractions import Fraction
 
 
 class List_Var:
@@ -18,7 +19,7 @@ class List_Var:
             l = len(self.list)
         l_factor = [0]*l
         for var in self.list:
-            l_factor[var.index] = var.factor
+            l_factor[var.index] = Fraction(var.factor)
         return l_factor
 
     def __eq__(self, other):

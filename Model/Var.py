@@ -60,7 +60,6 @@ class Var:
             raise NonLinear("factor %s is not linear" % factor)
 
 
-
     def get_coefficients(self,l=False):
         if not l:
             l = 1
