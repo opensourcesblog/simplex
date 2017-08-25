@@ -1,4 +1,4 @@
-import math
+import numpy as np
 
 
 class BnBBP:
@@ -6,9 +6,9 @@ class BnBBP:
         self.MINIMIZE = -1
         self.MAXIMIZE = 1
         if type == self.MAXIMIZE:
-            self.best_obj = -math.inf
+            self.best_obj = -np.inf
         else:
-            self.best_obj = math.inf
+            self.best_obj = np.inf
         self.best_model = best_model
         self.type = type
 
