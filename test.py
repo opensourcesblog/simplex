@@ -225,7 +225,7 @@ class MyTest(unittest.TestCase):
 
         x = []
         for ing in list_of_ingredients:
-            x.append(m.add_var("real+", name=ing, ub=ingredients[ing]["max"]))
+            x.append(m.add_var("real+", name=ing))
         x = np.array(x)
 
         m.minimize(sum(get_by_key(ingredients, "price", list_of_ingredients) * x))

@@ -33,6 +33,8 @@ class Model:
         self.t.constraints = []
         self.t.variables = []
 
+        self.is_infeasible = False
+
         default_print_obj = {
             'information': True,
             'start_conf': False,
@@ -142,6 +144,7 @@ class Model:
                 quot = np.argmin(np.abs(divInf(self.t.obj[:-1], a_m1)))
                 self.gauss_step(row, quot)
             else:
+                self.is_infeasible = True
                 raise InfeasibleError("The model is infeasible")
 
         solved, _ = self.pivot()
@@ -274,6 +277,7 @@ class Model:
                 leaving = self.t.row_to_var[leaving_row]
             else:
                 if self.t.dual:
+                    self.is_infeasible = True
                     raise InfeasibleError("The model is infeasible because the dual is unbound")
                 else:
                     raise Unbounded(self.t.variables[c]["x"].name)
@@ -451,13 +455,13 @@ class Model:
 
         if not solved:
             # print("Isn't solved yet")
-            print(self.get_solution_object())
-            print("Branch and bound for var %s" % (self.t.variables[max_diff_i]['x'].name))
-            bnb = BnB(bnbbp, self.t, self.t.variables[max_diff_i], sol_arr[max_diff_i],level+1)
+            # print(self.get_solution_object())
+            # print("Branch and bound for var %s" % (self.t.variables[max_diff_i]['x'].name))
+            BnB(bnbbp, self.t, self.t.variables[max_diff_i], sol_arr[max_diff_i],level+1)
             return False
         return True
 
-    def solve(self, consider_dual=None,):
+    def solve(self, consider_dual=None):
         self.solve_from_scratch(consider_dual)
 
         print("before mip", self.get_solution_object())
@@ -469,7 +473,7 @@ class Model:
 
         if self.p['end_conf']:
             print("End tableau")
-            print(self.t.tableau)
+            print(self.t.tab.frac_print())
             print("Steps: ", self.steps)
 
 

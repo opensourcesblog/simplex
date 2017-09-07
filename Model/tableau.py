@@ -120,6 +120,42 @@ class Tableau(object):
     def set_obj_coefficients(self, value):
         self._obj_coefficients = value
 
+    def frac_print(self):
+        # compute len for each element
+        shape = self._data.shape if self._data.ndim == 2 else (1, self._data.shape[0])
+
+        len_arr = [[0] * shape[1] for x in range(shape[0])]
+        str_arr = [[""] * shape[1] for x in range(shape[0])]
+        # str_arr =
+        for y in range(shape[0]):
+            for x in range(shape[1]):
+                n_val = self._data[y, x].numerator if self._data.ndim == 2 else self._data[x].numerator
+                d_val = self._data[y, x].denominator if self._data.ndim == 2 else self._data[x].denominator
+                frac = n_val / d_val
+                if int(frac) == frac:
+                    len_arr[y][x] = len(" %d" % frac)
+                    str_arr[y][x] = " %d" % frac
+                else:
+                    len_arr[y][x] = len(" %d/%d" % (n_val, d_val))
+                    str_arr[y][x] = " %d/%d" % (n_val, d_val)
+
+        str_arr_col = list(zip(*str_arr))
+        i = 0
+        for col in zip(*len_arr):
+            max_val = max(col) + 2
+            str_arr_col[i] = [" " * (max_val - len(x)) + str(x) for x in str_arr_col[i]]
+            i += 1
+
+        str_arr = list(zip(*str_arr_col))
+        output = ""
+        for row in str_arr:
+            line = "["
+            for ele in row:
+                line += ele
+            output += line + "]\n"
+
+        return output[:-1]
+
 
 class TableauView(object):
     def __init__(self,tab_data=False):

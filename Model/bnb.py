@@ -10,23 +10,25 @@ class BnB:
         self.level = level
         self.bnbbp = bnbbp
 
-        lower_feasible, lower_solved, lower_model = self.solve_lower(var, value)
-        if lower_solved:
-            sol = lower_model.get_solution_object()
-            if bnbbp.check_if_better(sol[-1],lower_model):
-                print("Found better", sol[-1])
-            echo(sol, level)
-        elif lower_feasible:
-            echo(lower_model.get_solution_object(), level)
+        lower_feasible, lower_model = self.solve_lower(var, value)
+        upper_feasible, upper_model = self.solve_upper(var, value)
 
-        upper_feasible, upper_solved, upper_model = self.solve_upper(var, value)
-        if upper_solved:
-            sol = upper_model.get_solution_object()
-            if bnbbp.check_if_better(sol[-1], upper_model):
-                print("Found better", sol[-1])
-            echo(sol, level)
-        elif upper_feasible:
-            echo(upper_model.get_solution_object(), level)
+        # returns False if infeasible or bounded
+        better_model, worse_model = bnbbp.get_better_and_worse(lower_model, upper_model)
+
+        if better_model:
+            solved_better = better_model.solve_mip(self.bnbbp, self.level)
+            if solved_better:
+                obj = better_model.get_solution_object()[-1]
+                if bnbbp.check_if_better(obj, better_model):
+                    print("Found better", obj)
+
+        if worse_model:
+            solved_worse = worse_model.solve_mip(self.bnbbp, self.level)
+            if solved_worse:
+                obj = worse_model.get_solution_object()[-1]
+                if bnbbp.check_if_better(obj, worse_model):
+                    print("Found better", obj)
 
     def solve_lower(self, var, value):
         from .model import Model
@@ -37,13 +39,9 @@ class BnB:
         m_lower.create_from_tableau(ex_tv=self.relaxedTV_lower)
         try:
             m_lower.add_lazy_constraint(var['x'] <= lower_value)
-            if not self.bnbbp.check_if_bound(m_lower.get_solution_object()[-1]):
-                solved_lower = m_lower.solve_mip(self.bnbbp, self.level)
-                if solved_lower:
-                    return True, True, m_lower
-            return True, False, m_lower
+            return True, m_lower
         except InfeasibleError:
-            return False, False, m_lower
+            return False, m_lower
 
     def solve_upper(self, var, value):
         from .model import Model
@@ -54,15 +52,9 @@ class BnB:
         m_upper.create_from_tableau(ex_tv=self.relaxedTV_upper)
         try:
             m_upper.add_lazy_constraint(var['x'] >= upper_value)
-            if not self.bnbbp.check_if_bound(m_upper.get_solution_object()[-1]):
-                solved_upper = m_upper.solve_mip(self.bnbbp, self.level)
-                if solved_upper:
-                    return True, True, m_upper
-            return True, False, m_upper
+            return True, m_upper
         except InfeasibleError:
-            return False, False, m_upper
+            return False, m_upper
 
 
-def echo(val, level):
-    s = " "*(level*2)
-    # print(s+str(val))
+
