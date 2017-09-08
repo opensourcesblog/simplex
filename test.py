@@ -176,7 +176,7 @@ class MyTest(unittest.TestCase):
             self.assertAlmostEqual(computed_solution[x_idx], real_sol[x_idx])
 
     def test_diet_integer(self):
-        m = Model()
+        m = Model(dtype="fraction")
 
         a = m.add_var("int+", name="oat")
         b = m.add_var("int+", name="chicken")
@@ -194,6 +194,7 @@ class MyTest(unittest.TestCase):
         # calcium
         m.add_constraint(2 * a + 12 * b + 54 * c + 285 * d + 22 * e + 80 * f >= 800)
 
+
         # oats
         m.add_constraint(a <= 4)
         # chicken
@@ -210,7 +211,47 @@ class MyTest(unittest.TestCase):
         m.solve()
 
         computed_solution = m.get_solution_object()
-        real_sol = [4.0, 0, 0, 4, 1, 2, 671]
+        real_sol = [4, 0, 0, 4, 1, 2, 671]
+        for x_idx in range(len(real_sol)):
+            self.assertAlmostEqual(computed_solution[x_idx], real_sol[x_idx])
+
+    def test_diet_integer_more_restrictions(self):
+        m = Model(dtype="fraction")
+
+        a = m.add_var("int+", name="oat")
+        b = m.add_var("int+", name="chicken")
+        c = m.add_var("int+", name="egg")
+        d = m.add_var("int+", name="milk")
+        e = m.add_var("int+", name="cake")
+        f = m.add_var("int+", name="bean")
+
+        m.minimize(25 * a + 130 * b + 85 * c + 70 * d + 95 * e + 98 * f)
+
+        # calories
+        m.add_constraint(110 * a + 205 * b + 160 * c + 160 * d + 420 * e + 260 * f >= 2000)
+        # proteins
+        m.add_constraint(4 * a + 32 * b + 13 * c + 8 * d + 4 * e + 14 * f >= 55)
+        # calcium
+        m.add_constraint(2 * a + 12 * b + 54 * c + 285 * d + 22 * e + 80 * f >= 800)
+
+
+        # oats
+        m.add_constraint(a <= 2)
+        # chicken
+        m.add_constraint(b <= 3)
+        # egg
+        m.add_constraint(c <= 2)
+        # milk
+        m.add_constraint(d <= 2)
+        # cake
+        m.add_constraint(e <= 1)
+        # bean
+        m.add_constraint(f <= 2)
+
+        m.solve()
+
+        computed_solution = m.get_solution_object()
+        real_sol = [2, 1, 2, 2, 1, 2, 781]
         for x_idx in range(len(real_sol)):
             self.assertAlmostEqual(computed_solution[x_idx], real_sol[x_idx])
 
@@ -237,20 +278,11 @@ class MyTest(unittest.TestCase):
 
         m.solve(consider_dual=0)
 
-        sol_obj = m.get_solution_object()
-
         try:
-            solved = False
-            while not solved:
-                solved = True
-                i = 0
-                for ing in list_of_ingredients:
-                    if sol_obj[i] > ingredients[ing]['max']:
-                        solved = False
-                        m.add_lazy_constraint(x[i] <= ingredients[ing]['max'])
-                        sol_obj = m.get_solution_object()
-                        break
-                    i += 1
+            i = 0
+            for ing in list_of_ingredients:
+                m.add_lazy_constraint(x[i] <= ingredients[ing]['max'])
+                i += 1
         except InfeasibleError as e:
             pass
         else:
@@ -430,6 +462,6 @@ if __name__ == '__main__':
     unittest.main()
     # ti = time()
     # t = MyTest()
-    # t.test_diet_integer()
+    # t.test_diet_integer_more_restrictions()
     # print("Time", time()-ti)
     # t.test_woody_min_dual_add_variable()

@@ -1,3 +1,4 @@
+import numpy as np
 
 class Constraint:
     def __init__(self,x,ty,y):
@@ -19,3 +20,13 @@ class Constraint:
 
         return False
 
+    def is_violated(self, dtype, values):
+        x = np.array(self.x.get_coefficients(dtype,len(values)))
+        val = np.sum(x*values)
+        if self.type == "<=":
+            if val > self.y:
+                return True
+        if self.type == ">=":
+            if val < self.y:
+                return True
+        return False

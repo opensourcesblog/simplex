@@ -5,22 +5,38 @@ from fractions import Fraction
 
 
 class List_Var:
-    def __init__(self, var_x, var_y):
+    def __init__(self, var_x, var_y=False):
         from .Var import Var
-
-        if isinstance(var_x, (Var)):
-            self.list = [var_x, var_y]
+        if var_y is False:
+            self.list = var_x if isinstance(var_x, list) else [var_x]
+        elif isinstance(var_x, (Var)):
+            if isinstance(var_y, (Var)):
+                self.list = [var_x, var_y]
+            else:
+                self.list = [var_x]+var_y.list
         elif isinstance(var_x, (List_Var)):
-            self.list = var_x.list
-            self.list.append(var_y)
+            if isinstance(var_y, (Var)):
+                self.list = var_x.list+ [var_y]
+            else:
+                self.list = var_x.list+var_y.list
 
-    def get_coefficients(self,l=False):
+    def get_coefficients(self,dtype="float",l=False):
         if not l:
             l = len(self.list)
         l_factor = [0]*l
-        for var in self.list:
-            l_factor[var.index] = Fraction(var.factor)
+        if dtype == "fraction":
+            for var in self.list:
+                l_factor[var.index] = Fraction(var.factor)
+        else:
+            for var in self.list:
+                l_factor[var.index] = var.factor
         return l_factor
+
+    def __str__(self):
+        return str(self.get_coefficients())
+
+    def __neg__(self):
+        return List_Var([-x for x in self.list])
 
     def __eq__(self, other):
         return Constraint(self, "==", other)

@@ -1,6 +1,7 @@
 from .constraint import Constraint
 from .error import NonLinear
 from .list_Var import List_Var
+from fractions import Fraction
 
 
 class Var:
@@ -60,9 +61,12 @@ class Var:
             raise NonLinear("factor %s is not linear" % factor)
 
 
-    def get_coefficients(self,l=False):
+    def get_coefficients(self,dtype="float",l=False):
         if not l:
             l = 1
         l_factor = [0]*l
-        l_factor[self.index] = self.factor
+        if dtype == "fraction":
+            l_factor[self.index] = Fraction(self.factor)
+        else:
+            l_factor[self.index] = self.factor
         return l_factor

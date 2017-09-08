@@ -3,7 +3,7 @@ import copy
 
 class Tableau(object):
     def __init__(self, data=False, nof_var_cols=0, dual=False, obj_type=1, type=1,
-                 row_to_var= False, variables= False, constraints=False,
+                 row_to_var= False, variables= False, constraints=False, lazy_constraints= False,
                  obj_coefficients=False):
         self.MINIMIZE = -1
         self.MAXIMIZE = 1
@@ -20,6 +20,7 @@ class Tableau(object):
         self._row_to_var = row_to_var
         self._variables = variables
         self._constraints = constraints
+        self._lazy_constraints = lazy_constraints
         if obj_coefficients is False:
             obj_coefficients = np.array([])
         self._obj_coefficients = obj_coefficients
@@ -114,6 +115,12 @@ class Tableau(object):
     def set_constraints(self, value):
         self._constraints = value
 
+    def get_lazy_constraints(self):
+        return self._lazy_constraints
+
+    def set_lazy_constraints(self, value):
+        self._lazy_constraints = value
+
     def get_obj_coefficients(self):
         return self._obj_coefficients
 
@@ -156,6 +163,41 @@ class Tableau(object):
 
         return output[:-1]
 
+    def float_print(self):
+        # compute len for each element
+        shape = self._data.shape if self._data.ndim == 2 else (1, self._data.shape[0])
+
+        len_arr = [[0] * shape[1] for x in range(shape[0])]
+        str_arr = [[""] * shape[1] for x in range(shape[0])]
+        # str_arr =
+        for y in range(shape[0]):
+            for x in range(shape[1]):
+                n_val = self._data[y, x].numerator if self._data.ndim == 2 else self._data[x].numerator
+                d_val = self._data[y, x].denominator if self._data.ndim == 2 else self._data[x].denominator
+                frac = n_val / d_val
+                if int(frac) == frac:
+                    len_arr[y][x] = len(" %d" % frac)
+                    str_arr[y][x] = " %d" % frac
+                else:
+                    len_arr[y][x] = len(" %.2f" % (n_val/d_val))
+                    str_arr[y][x] = " %.2f" % (n_val/d_val)
+
+        str_arr_col = list(zip(*str_arr))
+        i = 0
+        for col in zip(*len_arr):
+            max_val = max(col) + 2
+            str_arr_col[i] = [" " * (max_val - len(x)) + str(x) for x in str_arr_col[i]]
+            i += 1
+
+        str_arr = list(zip(*str_arr_col))
+        output = ""
+        for row in str_arr:
+            line = "["
+            for ele in row:
+                line += ele
+            output += line + "]\n"
+
+        return output[:-1]
 
 class TableauView(object):
     def __init__(self,tab_data=False):
@@ -173,9 +215,10 @@ class TableauView(object):
         row_to_var = np.copy(self.tab.get_row_to_var())
         variables = copy.deepcopy(self.tab.get_variables())
         constraints = copy.deepcopy(self.tab.get_constraints())
+        lazy_constraints = copy.deepcopy(self.tab.get_lazy_constraints())
         obj_coefficients = copy.deepcopy(self.tab.get_obj_coefficients())
         tab = Tableau(tableau, nof_var_cols, dual, obj_type, type, row_to_var,
-                      variables, constraints, obj_coefficients)
+                      variables, constraints, lazy_constraints, obj_coefficients)
         return TableauView(tab)
 
     @property
@@ -289,6 +332,14 @@ class TableauView(object):
     @constraints.setter
     def constraints(self, data):
         self.tab.set_constraints(data)
+
+    @property
+    def lazy_constraints(self):
+        return self.tab.get_lazy_constraints()
+
+    @lazy_constraints.setter
+    def lazy_constraints(self, data):
+        self.tab.set_lazy_constraints(data)
 
     @property
     def obj_coefficients(self):
