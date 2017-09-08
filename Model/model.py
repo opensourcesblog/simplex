@@ -4,7 +4,6 @@ from .error import *
 from time import time
 from .tableau import *
 from .bnb import BnB
-from .bnbbp import BnBBP
 from fractions import Fraction
 import pickle
 import warnings
@@ -499,7 +498,7 @@ class Model:
     def create_from_tableau(self, ex_tv):
         self.t = ex_tv
 
-    def solve_mip(self, bnbbp, level=0):
+    def solve_mip(self, bnb, index=0):
         # assume it's solved
         solved = True
         # check if the type of the solution is correct
@@ -530,7 +529,7 @@ class Model:
             # print("Isn't solved yet")
             # print(self.get_solution_object())
             # print("Branch and bound for var %s" % (self.t.variables[max_diff_i]['x'].name))
-            BnB(bnbbp, self.t, self.t.variables[max_diff_i], sol_arr[max_diff_i],level+1)
+            bnb.add(self.t, self.t.variables[max_diff_i], sol_arr[max_diff_i],self.dtype, index)
             return False
         return True
 
@@ -539,10 +538,10 @@ class Model:
 
         # print("before mip", self.get_solution_object())
         # check if mip problem and solve if necessary
-        bnbbp = BnBBP(self.t.obj_type, self)
-        self.solve_mip(bnbbp)
+        bnb = BnB(self.t.obj_type, self)
+        self.solve_mip(bnb)
 
-        self.t = bnbbp.best_model.t
+        self.t = bnb.best_model.t
 
         if self.p['end_conf']:
             print("End tableau")
