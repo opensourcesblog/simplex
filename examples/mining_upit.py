@@ -123,10 +123,11 @@ print("all added")
 
 t0 = time()
 
-m.solve(tableau_file=m.file_name)
+# m.solve(tableau_file=m.file_name)
+m.solve()
 print("Solved first in %f" % (time()-t0))
 
-m.print_solution(slack=False)
+print(m.get_solution_object())
 
 
 

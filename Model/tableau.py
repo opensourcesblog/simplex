@@ -127,6 +127,27 @@ class Tableau(object):
     def set_obj_coefficients(self, value):
         self._obj_coefficients = value
 
+    def get_basis(self):
+        return self._data[:-1,:-1][:,self._row_to_var]
+
+    def get_non_basis(self):
+        non_row_to_var = np.ones(self._data.shape[1]-1, np.bool)
+        non_row_to_var[self._row_to_var] = 0
+        return self._data[:-1,:-1][:,non_row_to_var]
+
+    def get_non_basis_c(self):
+        non_row_to_var = np.ones(self._data.shape[1]-1, np.bool)
+        non_row_to_var[self._row_to_var] = 0
+        return self._data[-1,:-1][non_row_to_var]
+
+    def get_c_b(self):
+        return -self._data[-1][self._row_to_var]
+
+    def get_non_basis_cols(self):
+        non_basis_columns = np.ones(self._data.shape[1] - 1)
+        non_basis_columns[self._row_to_var] = 0
+        return non_basis_columns.nonzero()[0]
+
     def frac_print(self):
         # compute len for each element
         shape = self._data.shape if self._data.ndim == 2 else (1, self._data.shape[0])
@@ -356,6 +377,27 @@ class TableauView(object):
     @obj_type.setter
     def obj_type(self, data):
         self.tab.set_obj_type(data)
+
+    @property
+    def basis(self):
+        return self.tab.get_basis()
+
+    @property
+    def non_basis(self):
+        return self.tab.get_non_basis()
+
+    @property
+    def c_b(self):
+        return self.tab.get_c_b()
+
+    @property
+    def c_n(self):
+        return self.tab.get_non_basis_c()
+
+    @property
+    def cols_nb(self):
+        return self.tab.get_non_basis_cols()
+
 
 
 

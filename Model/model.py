@@ -125,7 +125,6 @@ class Model:
                 self.add_new_col(col,obj)
 
     def add_new_row(self, new_row):
-        print("add new row")
         self.t.tableau = np.r_[self.t.tableau[:-1], new_row, self.t.tableau[-1, np.newaxis]]
 
         # adjusting the matrix
@@ -137,32 +136,21 @@ class Model:
             self.t.tableau[self.t.tableau == 0] = Fraction(0, 1)
 
         # A_m+1=A_m+1-A_(m+1,B)*A*
-        t = time()
         A = self.t.matrix
         A_m1 = A[-1]
         A_m1B = A_m1[self.t.row_to_var]
-        print(A_m1B.dtype)
-        print(A_m1B.shape)
-        print(self.t.A_star[:-1].shape)
         self.t.A_star[-1] -= A_m1B.dot(self.t.A_star[:-1])
-        print("new A after %.2f" % (time()-t))
 
         # S_m+1=-A_(m+1,B)*S*
-        t = time()
         self.t.S_star[-1,:-1] = -A_m1B.dot(self.t.S_star[:-1,:-1])
-        print("new S after %.2f" % (time() - t))
 
         # b_m+1 = b_m+1-A_(m+1,B)b*
-        t = time()
         self.t.bs[-1] -= A_m1B.dot(self.t.bs[:-1])
-        print("new b after %.2f" % (time() - t))
 
-        # check if b is negative => not feasible => dual pivot
+        # check if b is negative => not optimal => dual pivot
         self.t.row_to_var = np.append(self.t.row_to_var, self.t.tableau.shape[1]-2)
         if self.t.bs[-1] >= 0:
             return
-
-        print("before dual pivot")
 
         # Dual pivot
         while np.any(self.t.bs < 0):
@@ -174,6 +162,7 @@ class Model:
                 self.gauss_step(row, quot)
             else:
                 self.is_infeasible = True
+                print("DUAL infeasible")
                 raise InfeasibleError("The model is infeasible")
 
         solved, _ = self.pivot()
@@ -426,7 +415,56 @@ class Model:
 
         return sol_row
 
-    def solve_from_scratch(self, consider_dual, tableau_file):
+    def normal_simplex(self):
+        solved, _ = self.pivot()
+        while not solved:
+            solved, _ = self.pivot()
+            self.steps += 1
+        return
+
+    def revised_simplex(self):
+        # y.TB=cBT
+        y = np.linalg.solve(self.t.basis.T, self.t.c_b)
+        # get entering column a
+        last_row = -self.t.c_n-y.dot(self.t.non_basis)
+        amin_c = np.argmax(last_row)
+
+        while last_row[amin_c] > 0:
+            amin_c = self.t.cols_nb[amin_c]
+            a = self.t.matrix[:,amin_c]
+
+            # Bd=a
+            d = np.linalg.solve(self.t.basis,a)
+
+            # difference b/d
+            d_positive = np.copy(d)
+            d_positive[d_positive<0]=0
+            diff_b_d = divInf(self.t.bs,d_positive)
+            l = np.argmin(diff_b_d)
+            b = self.t.bs-d*diff_b_d[l]
+            b[l] = diff_b_d[l]
+
+            # update
+            self.t.bs = b
+            self.t.row_to_var[l] = amin_c
+
+            y = np.linalg.solve(self.t.basis.T, self.t.c_b)
+            last_row = -self.t.c_n - y.dot(self.t.non_basis)
+            amin_c = np.argmax(last_row)
+
+            values = np.zeros(self.t.tableau.shape[1] - 1)
+            values[self.t.row_to_var] = self.t.bs
+            # obj = sum(self.t.obj_coefficients*values[:len(self.t.obj_coefficients)])
+
+        values = np.zeros(self.t.tableau.shape[1]-1)
+        values[self.t.row_to_var] = self.t.bs
+        obj = sum(self.t.obj_coefficients * values[:len(self.t.obj_coefficients)])
+        if self.t.obj_type == self.MINIMIZE:
+            self.t.obj[-1] = -obj
+        else:
+            self.t.obj[-1] = obj
+
+    def solve_from_scratch(self, consider_dual, tableau_file, revised):
         if consider_dual is None:
             consider_dual = self.TEST_DUAL
 
@@ -448,11 +486,11 @@ class Model:
                 # if constraint.y < 0:
                 #     raise Unsolveable("All constants on the right side must be non-negative")
                 values = coefficients + [constraint.y]
-                for v_idx in range(len(values)):
-                    if self.dtype == "fraction":
+                if self.dtype == "fraction":
+                    for v_idx in range(len(values)):
                         self.t.tableau[i][v_idx] = Fraction(values[v_idx])
-                    else:
-                        self.t.tableau[i][v_idx] = values[v_idx]
+                else:
+                    self.t.tableau[i] = values
 
                 if self.t.type == self.MAXIMIZE:
                     if constraint.type != "<=":
@@ -463,8 +501,7 @@ class Model:
                 i += 1
 
             # set obj
-            for v_idx in range(len(self.t.obj_coefficients)):
-                self.t.tableau[-1][v_idx] = self.t.obj_coefficients[v_idx]
+            self.t.tableau[-1,:-1] = self.t.obj_coefficients
 
             if self.p["timing"]:
                 print("Added everything after %.2f s" % (time()-self.start_time))
@@ -485,12 +522,14 @@ class Model:
         else:
             self.t = load_obj(tableau_file)
 
-        solved, _ = self.pivot()
-        while not solved:
-            s = time()
-            solved, _ = self.pivot()
+        print("Time until solve begins", time()-self.start_time)
+        print(self.t.tableau)
 
-            self.steps += 1
+        if not revised:
+            self.normal_simplex()
+        else:
+            self.revised_simplex()
+
         if self.p["save_tab"]:
             save_obj(self.file_name, self.t)
             print("SAVED")
@@ -533,8 +572,8 @@ class Model:
             return False
         return True
 
-    def solve(self, tableau_file=False,consider_dual=None):
-        self.solve_from_scratch(consider_dual, tableau_file)
+    def solve(self, tableau_file=False,consider_dual=None,revised=False):
+        self.solve_from_scratch(consider_dual, tableau_file, revised)
 
         # print("before mip", self.get_solution_object())
         # check if mip problem and solve if necessary

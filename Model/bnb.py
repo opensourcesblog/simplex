@@ -1,6 +1,8 @@
 import numpy as np
 import math
 from .error import *
+from binarytree import tree, convert, pprint
+
 
 def argmax(iterable):
     return max(enumerate(iterable), key=lambda x: x[1])[0]
@@ -54,14 +56,19 @@ class BnB:
         self.tree_obj[idx] = self.get_obj_or_inf(model)
         return idx
 
+    def remove_from_tree(self, idx):
+        self.tree_model[idx] = None
+        if self.type == self.MAXIMIZE:
+            self.tree_obj[idx] = -np.inf
+        else:
+            self.tree_obj[idx] = np.inf
+
     def get_best_unexplored(self):
         if self.type == self.MAXIMIZE:
             idx = argmax(self.tree_obj)
-            self.tree_obj[idx] = -np.inf
             return self.tree_model[idx], idx
         else:
             idx = argmin(self.tree_obj)
-            self.tree_obj[idx] = np.inf
             return self.tree_model[idx], idx
 
     def check_if_better(self, val, model):
@@ -85,7 +92,6 @@ class BnB:
             if val > self.best_obj:
                 return True
         return False
-
 
     def add(self, t, var, value, dtype, index=0):
         def solve_lower(var, value):
@@ -114,23 +120,37 @@ class BnB:
             except InfeasibleError:
                 return False, m_upper
 
+        def to_string(s):
+            if isinstance(s, float):
+                if np.isinf(s):
+                    return ''
+                else:
+                    return str(s)
+            else:
+                return str(s)
+
         print("Branch and bound index", index)
         relaxedTV_lower = t.deepcopy()
         relaxedTV_upper = t.deepcopy()
 
+        self.remove_from_tree(index)
+
         lower_feasible, lower_model = solve_lower(var, value)
-        print("lower solved")
         upper_feasible, upper_model = solve_upper(var, value)
-        print("upper solved")
+        print("Solved lower and upper")
 
         self.add_left(index, lower_model)
         self.add_right(index, upper_model)
+
+        obj_list = [to_string(x) for x in self.tree_obj]
+        tree = convert(obj_list)
+        pprint(tree)
 
         best_unexplored_model, best_index = self.get_best_unexplored()
         print("Best index", best_index)
 
         if best_unexplored_model:
-            solved = best_unexplored_model.solve_mip(self,best_index)
+            solved = best_unexplored_model.solve_mip(self, best_index)
             if solved:
                 obj = best_unexplored_model.get_solution_object()[-1]
                 if self.check_if_better(obj, best_unexplored_model):
