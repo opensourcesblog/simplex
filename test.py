@@ -472,11 +472,12 @@ class MyTest(unittest.TestCase):
 
 
 if __name__ == '__main__':
-    # unittest.main()
-    ti = time()
-    t = MyTest()
+    # np.__config__.show()
+    unittest.main()
+    # ti = time()
+    # t = MyTest()
     # t.test_revised()
-    t.test_maximize_4v_3c_3o()
+    # t.test_maximize_4v_3c_3o()
     # t.test_diet()
-    print("Time", time()-ti)
+    # print("Time", time()-ti)
     # t.test_woody_min_dual_add_variable()

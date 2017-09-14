@@ -148,6 +148,9 @@ class Tableau(object):
         non_basis_columns[self._row_to_var] = 0
         return non_basis_columns.nonzero()[0]
 
+    def get_A(self):
+        return self._data[:-1,:-1]
+
     def frac_print(self):
         # compute len for each element
         shape = self._data.shape if self._data.ndim == 2 else (1, self._data.shape[0])
@@ -398,6 +401,9 @@ class TableauView(object):
     def cols_nb(self):
         return self.tab.get_non_basis_cols()
 
+    @property
+    def A(self):
+        return self.tab.get_A()
 
 
 

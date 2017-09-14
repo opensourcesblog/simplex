@@ -7,6 +7,7 @@ from .bnb import BnB
 from fractions import Fraction
 import pickle
 import warnings
+from scipy import linalg as la
 
 np.set_printoptions(precision=2,
                        threshold=1000000,
@@ -46,6 +47,7 @@ class Model:
         self.t.lazy_constraints = []
         self.t.variables = []
 
+        self.multiplier = 1
         self.is_infeasible = False
 
         default_print_obj = {
@@ -285,12 +287,17 @@ class Model:
 
         if self.p['start_conf']:
             print("Start Tableau:")
-            print(self.t.tab.float_print())
+            if self.dtype == "fraction":
+                print(self.t.tab.float_print())
+            else:
+                print(self.t.tableau)
 
 
     def new_basis(self,entering,leaving):
         for row in range(self.t.matrix.shape[0]):
             if self.t.row_to_var[row] == leaving:
+                print("leaving", self.t.row_to_var[row])
+                print("entering", entering)
                 self.t.row_to_var[row] = entering
                 break
 
@@ -418,47 +425,106 @@ class Model:
     def normal_simplex(self):
         solved, _ = self.pivot()
         while not solved:
+            print("obj", self.get_solution_object()[-1])
             solved, _ = self.pivot()
             self.steps += 1
         return
 
     def revised_simplex(self):
+        eps = 0.0000001
+        print("Tableau shape", self.t.tableau.shape)
+
+        values = np.zeros(self.t.tableau.shape[1] - 1)
+        values[self.t.row_to_var] = self.t.bs
+        last_obj = self.multiplier * sum(self.t.obj_coefficients * values[:len(self.t.obj_coefficients)])
+
+
+        basis_lu = la.lu_factor(self.t.basis)
+
         # y.TB=cBT
-        y = np.linalg.solve(self.t.basis.T, self.t.c_b)
+        y = la.lu_solve(basis_lu, self.t.c_b, trans=1)
         # get entering column a
         last_row = -self.t.c_n-y.dot(self.t.non_basis)
-        amin_c = np.argmax(last_row)
+        amax_c = np.argmax(last_row)
 
-        while last_row[amin_c] > 0:
-            amin_c = self.t.cols_nb[amin_c]
-            a = self.t.matrix[:,amin_c]
+        c_bs = np.copy(self.t.bs)
+        c_bs[c_bs < np.finfo(np.float64).eps] = 0
+
+        while last_row[amax_c] > 0:
+            amax_c = self.t.cols_nb[amax_c]
+            a = self.t.matrix[:,amax_c]
 
             # Bd=a
-            d = np.linalg.solve(self.t.basis,a)
+            t = time()
+            d = la.lu_solve(basis_lu,a)
+            print("d solve in ", time()-t)
 
             # difference b/d
             d_positive = np.copy(d)
-            d_positive[d_positive<0]=0
-            diff_b_d = divInf(self.t.bs,d_positive)
+            d_positive[d_positive < eps]=0
+
+            diff_b_d = divInf(c_bs,d_positive)
             l = np.argmin(diff_b_d)
-            b = self.t.bs-d*diff_b_d[l]
-            b[l] = diff_b_d[l]
 
             # update
-            self.t.bs = b
-            self.t.row_to_var[l] = amin_c
+            self.t.row_to_var[l] = amax_c
 
-            y = np.linalg.solve(self.t.basis.T, self.t.c_b)
+            t = time()
+            basis_lu = la.lu_factor(self.t.basis)
+            print("Time for LU", time()-t)
+
+            c_bs = la.lu_solve(basis_lu, self.t.bs)
+            c_bs[c_bs < np.finfo(np.float64).eps] = 0
+
+            """
+            if np.isnan(c_bs[0]):
+                print("Basis")
+                # print(self.t.basis)
+                np.save("basis", self.t.basis)
+            if np.any(c_bs < 0):
+                # print(self.t.basis)
+                # np.set_printoptions(precision=15)
+                print("c_bs has negative values")
+                print(c_bs)
+                print("-----------")
+                print("old c_bs")
+                print(old_cbs)
+
+                print("d_positive")
+                print(d_positive)
+
+                print("diff_b_d")
+                print(diff_b_d)
+                exit(101)
+            """
+
+            t = time()
+            y = la.lu_solve(basis_lu, self.t.c_b, trans=1)
+            print("y solve in ", time() - t)
+
+
             last_row = -self.t.c_n - y.dot(self.t.non_basis)
-            amin_c = np.argmax(last_row)
+            amax_c = np.argmax(last_row)
 
             values = np.zeros(self.t.tableau.shape[1] - 1)
-            values[self.t.row_to_var] = self.t.bs
-            # obj = sum(self.t.obj_coefficients*values[:len(self.t.obj_coefficients)])
+            values[self.t.row_to_var] = c_bs
+            obj = self.multiplier*sum(self.t.obj_coefficients*values[:len(self.t.obj_coefficients)])
+            print("obj", obj)
+            if self.t.obj_type == self.MINIMIZE:
+                if obj > last_obj+0.0001:
+                    print("Obj is higher than before")
+                    exit(4)
+            else:
+                if obj < last_obj-0.0001:
+                    print("Obj is lower than before")
+                    exit(4)
+            last_obj = obj
+            self.steps += 1
 
+        self.t.bs = c_bs
         values = np.zeros(self.t.tableau.shape[1]-1)
-        values[self.t.row_to_var] = self.t.bs
-        obj = sum(self.t.obj_coefficients * values[:len(self.t.obj_coefficients)])
+        values[self.t.row_to_var] = c_bs
+        obj = self.multiplier*sum(self.t.obj_coefficients * values[:len(self.t.obj_coefficients)])
         if self.t.obj_type == self.MINIMIZE:
             self.t.obj[-1] = -obj
         else:
@@ -521,9 +587,11 @@ class Model:
             self.to_standard()
         else:
             self.t = load_obj(tableau_file)
+            return
 
         print("Time until solve begins", time()-self.start_time)
-        print(self.t.tableau)
+
+        # np.save("tab_pre_solve", self.t.tableau)
 
         if not revised:
             self.normal_simplex()
@@ -584,21 +652,19 @@ class Model:
 
         if self.p['end_conf']:
             print("End tableau")
-            print(self.t.tab.float_print())
+            if self.dtype == "fraction":
+                print(self.t.tab.float_print())
+            else:
+                print(self.t.tableau)
             print("Steps: ", self.steps)
 
 
 def divInf(a, b):
     """ ignore / 0, div0( [-1, 0, 1], 0 ) -> [Inf, Inf, Inf] """
-    with warnings.catch_warnings():
-        warnings.filterwarnings('error')
-        try:
-            return a/b
-        except (Warning,ZeroDivisionError):
-            result = []
-            for i in range(len(a)):
-                if b[i] == 0:
-                    result.append(np.inf)
-                else:
-                    result.append(a[i]/b[i])
-            return result
+    try:
+        value = a/b
+    except ZeroDivisionError:
+        value = float('Inf')
+    nan_idx = np.where(np.isnan(value))
+    value[nan_idx] = np.inf
+    return value

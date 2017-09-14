@@ -86,6 +86,7 @@ def read_prec(dataset, n_blocks):
     f.close()
     return pred
 
+
 def get_by_key(arr,key):
     result = []
     for i in arr:
@@ -95,14 +96,19 @@ def get_by_key(arr,key):
 
 n_blocks, n_periods, n_res_constr, discount_rate, res_constr_limits, profit, res_constr_coeff = read_cpit(instance)
 x_value, y_value, z_value = read_blocks(instance)
+
 pred = read_prec(instance, n_blocks)
 
 print("#blocks", n_blocks)
 print("#periods", n_periods)
 
+mean = np.mean(profit)
+# profit /= mean
+# m.multiplier = mean
+
 x = []
 for i in range(n_blocks):
-    x.append(m.add_var("int+", name=i))
+    x.append(m.add_var("real+", name=i))
 x = np.array(x)
 
 m.file_name = "examples/data/newman"
@@ -115,7 +121,7 @@ for i in range(n_blocks):
 # cost
 # m.add_constraint(sum(get_by_key(blocks,"c")*x) <= max_c)
 
-for i in range(2,n_blocks):
+for i in range(n_blocks):
     if len(pred[i]) > 0:
         m.add_constraint(len(pred[i])*x[i]-sum(x[pred[i]]) <= 0)
 
@@ -123,8 +129,8 @@ print("all added")
 
 t0 = time()
 
-# m.solve(tableau_file=m.file_name)
-m.solve()
+m.solve(revised=True)
+# m.solve()
 print("Solved first in %f" % (time()-t0))
 
 print(m.get_solution_object())
